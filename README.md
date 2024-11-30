@@ -1,13 +1,13 @@
 
-# vmm-sdat
+# vmm-essdat
 
-VMM3a/SRS Data Analysis Tool: Analysis software for VMM3a data, recorded with the SRS or the ESS readout as PCAPNG file. From the PCAP file, a root tree with the hits and clusters is created.
+VMM3a ESS Data Analysis Tool: Analysis software for VMM3a data, recorded with the ESS readout as PCAPNG file. From the PCAP file, a root tree with the hits and clusters is created.
 For more information about ROOT see [here](https://root.cern.ch/)
 
 ## Getting Started
 
 ### Which branch do I need?
-The main branch analyses PCAPNG files in the SRS or ESS data format. PCAPNG files can be generated with Wireshark or tcdump. The SRS branch analyses PCAPNG files, or HDF5 files that have been created with the GdGEM pipeline of the ESS DAQ/event formation unit. The old SRS data format (offsets 0-31) and the new SRS data format (offsets -1 to 15) are supported.
+The main branch analyses PCAPNG files in ESS data format. PCAPNG files can be generated with Wireshark or tcdump.
 
 ### Prerequisites
 - Boost system library [find_package( Boost REQUIRED COMPONENTS system)]
@@ -17,7 +17,7 @@ The main branch analyses PCAPNG files in the SRS or ESS data format. PCAPNG file
 
 ## Installing
 
-To build the program, start in the program directory vmm-sdat
+To build the program, start in the program directory vmm-essdat
 ```
 mkdir build
 cd build
@@ -46,19 +46,13 @@ Example command line:
 ```
 
 ## Description of analysis program
-
-The ESS DAQ https://github.com/ess-dmsc/essdaq provides in various detector pipelines the option to write hits 
-to hdf5 files. The format of this hdf5 file is defined in the ESS DAQ in the Readout.h files. For GEM detectors 
-and the SRS readout, the Readout.h file can be found in 
-https://github.com/ess-dmsc/event-formation-unit/blob/master/src/gdgem/nmx/Readout.h
+NEEDS TO BE UPDATED!
 
 ### Time calculation
-The convertFile utility of the vmm-sdat package analyses pcapng directly from the SRS FEC, or the hdf5 files of the 
-gdgem/SRS pipeline. There are two time stamps in the hdf5 file, the srs_timestamp coming from the SRS front end card (FEC), and the 
-chiptime coming from the VMM ASIC. To obtain the total time, these two timestamps are added, and the new field in the 
-root file is just called time.
+The convertFile utility of the vmm-essdat package analyses pcapng directly from the ESS readout. 
 
-The VMM measures time in BCID and TDC, with a 40 MHz BC clock the BCID has a 25 ns resolution. The BCID is a 12 bit 
+
+The VMM measures time in BCID and TDC, with a 44 MHz BC clock the BCID has a 22.5 ns resolution. The BCID is a 12 bit 
 number with values going from 0-4095, that means the bc_time is covering a range of 4096 * 25 ns = 102.4 us. 
 The TDC gives information about the time between BCIDs. With a TAC slope of 
 60 ns, the time resolution of the tdc_time is 60ns/256 bits = 0.23 ns. The tdc_time and the bc_time together are 
@@ -75,7 +69,7 @@ Example:
 But even with the offset the time range covered is only 32 * 102.4 us = 3278.8 us = 3.3 ms. Therefore every 
 3.3 ms 42 bit time markers are send by the FEC card. All the offsets always refer to the previous time marker 
 sent for the particular VMM. The EFU now takes the time markers and the offset and calculates the srs_timestamp 
-from it in unit [ns]. If one analyses a pcapng file, the vmm-sdat analysis code carries out the same steps that are 
+from it in unit [ns]. If one analyses a pcapng file, the vmm-essdat analysis code carries out the same steps that are 
 done in the EFU. The chiptime is calculated from BCID and TDC, the srs_timestamp is calculated from the last time marker
 and the offsets.
 
@@ -111,7 +105,7 @@ a position and a time is calculated using three different algorithms:
     - center-of-mass2 (charge squared as weight)
     - utpc (latest time)
 The user can define additional algorithms in the method Clusterer::AlgorithmUTPC() in
-https://github.com/ess-dmsc/vmm-sdat/blob/master/src/Clusterer.cpp
+https://github.com/ess-dmsc/vmm-essdat/blob/master/src/Clusterer.cpp
 
 The additional algorithm is picked depending on the -algo parameter. At the moment, two additional algorithms are 
 defined there 
@@ -293,8 +287,8 @@ TString d  = f->Get("date")->GetTitle()
 * **Dorothea Pfeiffer** - *Initial work, implementation of new features* - [dorotheapfeiffer](https://github.com/dorotheapfeiffer)
 * **Lucian Scharenberg** - *Debugging, testing, proposing new features, Python analysis*  - [lscharenberg](https://github.com/lscharenberg)
 
-See also the list of [contributors](https://github.com/ess-dmsc/vmm-sdat/contributors) who participated in this project.
+See also the list of [contributors](https://github.com/ess-dmsc/vmm-essdat/contributors) who participated in this project.
 
 ## License
 
-This project is licensed under the BSD 2-Clause "Simplified" License - see the [license](https://github.com/ess-dmsc/vmm-sdat/contributors/LICENSE.md) file for details.
+This project is licensed under the BSD 2-Clause "Simplified" License - see the [license](https://github.com/ess-dmsc/vmm-essdat/contributors/LICENSE.md) file for details.
