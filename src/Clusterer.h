@@ -13,6 +13,11 @@ public:
 
   ~Clusterer();
 
+  bool SaveHitsR5560(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
+                     uint8_t groupId, uint16_t ampa, uint16_t ampb,
+                     uint16_t ampc, uint16_t ampd, uint8_t om, uint32_t counter,
+                     double pulseTime);
+
   // Analyzing and storing the hits
   bool AnalyzeHits(double readoutTimestamp, uint8_t fecId, uint8_t vmmId,
                    uint16_t chNo, uint16_t bcid, uint16_t tdc, uint16_t adc,

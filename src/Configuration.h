@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vector>
 
-#define NUMFECS 385
+#define NUMFECS 193
 
 class Configuration {
 private:
@@ -85,7 +85,7 @@ public:
 
   std::string pFileName = "";
   double pTAC = 60.0;
-  double pBC = 40.0;
+  double pBC = 44.0;
   std::string pChannelMapping = "gem";
   std::string pGeometryFile = "";
   bool createJSON = false;
@@ -103,8 +103,8 @@ public:
   std::string pCalFilename = "";
   std::string pInfo = "";
 
-  double pBCTime_ns = 1000.0 / (double)pBC;
-  double pOffsetPeriod = 1000.0 * 4096.9 / (double)pBC;
+  double pBCTime_ns = 22.7137219;
+  double pOffsetPeriod = 4096.0 * pBCTime_ns;
 
   std::map<std::tuple<uint8_t, uint8_t>, int> pChannels;
   std::map<uint8_t, int> pChannels0;
@@ -130,7 +130,7 @@ public:
   bool pTimeZero = false;
   bool pHighMultiplicity = false;
   bool pIsPads[16];
-  std::string pDataFormat = "ESS";
+  int pDataFormat = 0x44;
   std::string pBunchFile = "ps_run.root";
   std::string pBunchIntensityVariable = "PulseIntensity";
   std::string pBunchTimeVariable = "psTime";

@@ -6,6 +6,9 @@
 #include <time.h>
 
 #define BINNING_FACTOR 1
+#define NUM_RINGS 2
+#define NUM_FENS 1
+#define NUM_TUBES 16
 
 RootFile *RootFile::m_rootFile = nullptr;
 
@@ -206,7 +209,9 @@ void RootFile::SaveDate(double the_seconds_start, std::string the_date_start,
 void RootFile::FillCalibHistos(uint16_t fec, uint8_t vmm, uint8_t ch, float adc,
                                float adc_corrected, float chip_time,
                                float chip_time_corrected) {
-
+  if (m_config.pDataFormat < 0x40 || m_config.pDataFormat > 0x4C) {
+    return;
+  }
   if (m_map_calib_TH2D.find(std::make_tuple(fec, vmm, "adc_without_calib")) !=
       m_map_calib_TH2D.end()) {
     int idx = m_map_calib_TH2D[std::make_tuple(fec, vmm, "adc_without_calib")];
@@ -233,7 +238,34 @@ RootFile::RootFile(Configuration &config) : m_config(config) {
   m_fileName = m_config.pRootFilename.c_str();
   m_file = TFile::Open(m_fileName, "RECREATE");
   m_eventNr = 0;
+  if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
+    TH1D *h1;
+    std::string name = "";
+    for (int ring = 0; ring < 2; ring++) {
+      name = "ring" + std::to_string(ring);
+      h1 = new TH1D(name.c_str(), name.c_str(), 2020, -10, 1000);
+      m_delta_t_ring.push_back(h1);
+      m_lastTimeRing.push_back(0);
+      for (int fen = 0; fen < 1; fen++) {
+        name = "ring" + std::to_string(ring) + "_fen" + std::to_string(fen);
+        h1 = new TH1D(name.c_str(), name.c_str(), 2020, -10, 1000);
+        m_delta_t_fen.push_back(h1);
+        m_lastTimeFen.push_back(0);
+        for (int tube = 0; tube < 16; tube++) {
+          name = "ring" + std::to_string(ring) + "_fen" + std::to_string(fen) +
+                 "_tube" + std::to_string(tube);
+          h1 = new TH1D(name.c_str(), name.c_str(), 2020, -10, 1000);
+          m_delta_t_tube.push_back(h1);
+          m_lastTimeTube.push_back(0);
+        }
+      }
+    }
 
+    m_tree_hits = new TTree("hits", "hits");
+    m_tree_hits->SetDirectory(m_file);
+    m_tree_hits->Branch("hits", &m_hit_r5560);
+    return;
+  }
   if (m_config.useCalibration && m_config.calibrationHistogram) {
     TH2D *h2;
     std::string name = "";
@@ -493,6 +525,9 @@ RootFile::RootFile(Configuration &config) : m_config(config) {
 RootFile::~RootFile() {}
 
 void RootFile::AddHits(Hit &&the_hit) { m_hits.emplace_back(the_hit); }
+void RootFile::AddHits(HitR5560 &&the_hit) {
+  m_hits_r5560.emplace_back(the_hit);
+}
 
 void RootFile::SaveHits() {
   if (m_hits.size() > 0) {
@@ -501,6 +536,36 @@ void RootFile::SaveHits() {
       m_tree_hits->Fill();
     }
     m_hits.clear();
+  }
+  if (m_hits_r5560.size() > 0) {
+    std::sort(begin(m_hits_r5560), end(m_hits_r5560),
+              [](const HitR5560 &t1, const HitR5560 &t2) {
+                return t1.time < t2.time;
+              });
+    for (int n = 0; n < m_hits_r5560.size(); n++) {
+      m_hit_r5560 = m_hits_r5560[n];
+      m_tree_hits->Fill();
+      int ring = m_hit_r5560.ring;
+      int fen = m_hit_r5560.fen;
+      int tube = m_hit_r5560.group;
+
+      double dt_ring = m_hit_r5560.time - m_lastTimeRing[ring / 2];
+      double dt_fen =
+          m_hit_r5560.time - m_lastTimeFen[(ring / 2) * NUM_FENS + fen];
+      double dt_tube =
+          m_hit_r5560.time - m_lastTimeFen[(ring / 2) * NUM_FENS * NUM_TUBES +
+                                           fen * NUM_TUBES + tube];
+
+      m_delta_t_ring[ring / 2]->Fill(dt_ring);
+      m_delta_t_fen[(ring / 2) * NUM_FENS + fen]->Fill(dt_fen);
+      m_delta_t_tube[(ring / 2) * NUM_FENS * NUM_TUBES + fen * NUM_TUBES + tube]
+          ->Fill(dt_tube);
+      m_lastTimeRing[ring / 2] = m_hit_r5560.time;
+      m_lastTimeFen[(ring / 2) * NUM_FENS + fen] = m_hit_r5560.time;
+      m_lastTimeTube[(ring / 2) * NUM_FENS * NUM_TUBES + fen * NUM_TUBES +
+                     tube] = m_hit_r5560.time;
+    }
+    m_hits_r5560.clear();
   }
 }
 
@@ -585,6 +650,28 @@ void RootFile::SaveClustersDetector(ClusterVectorDetector &&clusters_detector) {
 }
 
 void RootFile::SaveHistograms() {
+  if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
+    for (int ring = 0; ring < NUM_RINGS; ring++) {
+      if (m_lastTimeRing[ring / 2] > 0) {
+        m_delta_t_ring[ring / 2]->Write("", TObject::kOverwrite);
+      }
+      for (int fen = 0; fen < NUM_FENS; fen++) {
+        if (m_lastTimeFen[(ring / 2) * NUM_FENS + fen] > 0) {
+          m_delta_t_fen[(ring / 2) * NUM_FENS + fen]->Write(
+              "", TObject::kOverwrite);
+        }
+        for (int tube = 0; tube < NUM_TUBES; tube++) {
+          if (m_lastTimeTube[(ring / 2) * NUM_FENS * NUM_TUBES +
+                             fen * NUM_TUBES + tube] > 0) {
+            m_delta_t_tube[(ring / 2) * NUM_FENS * NUM_TUBES + fen * NUM_TUBES +
+                           tube]
+                ->Write("", TObject::kOverwrite);
+          }
+        }
+      }
+    }
+    return;
+  }
   for (auto const &h1 : m_TH1D) {
     h1->Write("", TObject::kOverwrite);
   }

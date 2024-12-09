@@ -18,6 +18,20 @@
 
 #include <cinttypes>
 
+// VMM3a
+//  TREX 0x40 (64)
+//  NMX 0x44 (68)
+//  Freia 0x48 (72)
+//  TBL MB 0x49 (73)
+//  Estia 0x4C (76)
+
+// R5560
+//  Loki 0x30 (48)
+//  TBL He3 0x32 (50)
+//  BIFROST 0x34 (52)
+//  Miracles 0x38 (56)
+//  CSPEC 0x3C (60)
+
 struct ESSHeaderStats {
   int64_t ErrorBuffer{0};
   int64_t ErrorSize{0};

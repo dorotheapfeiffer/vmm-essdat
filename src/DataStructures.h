@@ -19,6 +19,20 @@ struct Hit {
   double chip_time;
 };
 
+struct HitR5560 {
+  uint8_t ring;
+  uint8_t fen;
+  uint8_t group;
+  uint32_t counter;
+  uint16_t ampa;
+  uint16_t ampb;
+  uint16_t ampc;
+  uint16_t ampd;
+  uint8_t om;
+  double pulse_time;
+  double time;
+};
+
 struct ClusterPlane {
   uint8_t det;
   uint8_t plane;

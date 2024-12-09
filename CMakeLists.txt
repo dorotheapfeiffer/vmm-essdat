@@ -80,6 +80,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/convertLinkDef.h MODULE vmm-essdat)
 #---Create a shared library with generated dictionary
 add_library(vmm-essdat SHARED 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/VMM3Parser.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/parser/R5560Parser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/ReadoutParser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/CalibrationFile.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/ReaderPcap.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/Clusterer.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/RootFile.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/Configuration.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/Statistics.cpp vmm-essdatDict.cxx)

@@ -34,6 +34,62 @@ Clusterer::Clusterer(Configuration &config, Statistics &stats)
 Clusterer::~Clusterer() { RootFile::Dispose(); }
 
 //====================================================================================================================
+bool Clusterer::SaveHitsR5560(double readoutTimestamp, uint8_t ringId,
+                              uint8_t fenId, uint8_t groupId, uint16_t ampa,
+                              uint16_t ampb, uint16_t ampc, uint16_t ampd,
+                              uint8_t om, uint32_t counter, double pulseTime) {
+
+  bool newData = false;
+  if (m_stats.GetFirstTriggerTimestamp(NUMFECS - 1) == 0) {
+    m_stats.SetFirstTriggerTimestamp(NUMFECS - 1, readoutTimestamp);
+  }
+  if (m_stats.GetFirstTriggerTimestamp(ringId * 16 + fenId) == 0) {
+    m_stats.SetFirstTriggerTimestamp(ringId * 16 + fenId, readoutTimestamp);
+  }
+
+  if (m_stats.GetMaxTriggerTimestamp(NUMFECS - 1) < readoutTimestamp) {
+    m_stats.SetMaxTriggerTimestamp(NUMFECS - 1, readoutTimestamp);
+  }
+  if (m_stats.GetMaxTriggerTimestamp(ringId * 16 + fenId) < readoutTimestamp) {
+    m_stats.SetMaxTriggerTimestamp(ringId * 16 + fenId, readoutTimestamp);
+  }
+  double buffer_interval_ns = 10000000.0;
+  if (readoutTimestamp >= m_stats.GetOldTriggerTimestamp(ringId * 16 + fenId) +
+                              buffer_interval_ns) {
+    newData = true;
+  }
+
+  if (newData) {
+    m_rootFile->SaveHits();
+    m_stats.SetOldTriggerTimestamp(ringId * 16 + fenId, readoutTimestamp);
+  }
+
+  m_hitNr++;
+
+  HitR5560 theHit;
+  theHit.ring = ringId;
+  theHit.fen = fenId;
+  theHit.group = groupId;
+  if (m_config.pDataFormat == 0x30) {
+    theHit.counter = counter;
+    theHit.ampc = ampc;
+    theHit.ampd = ampd;
+  } else if (m_config.pDataFormat == 0x34) {
+    theHit.counter = ampc * 65536 + ampd;
+    theHit.ampc = 0;
+    theHit.ampd = 0;
+  }
+  theHit.ampa = ampa;
+  theHit.ampb = ampb;
+
+  theHit.om = om;
+  theHit.time = readoutTimestamp;
+  theHit.pulse_time = pulseTime;
+  m_rootFile->AddHits(std::move(theHit));
+
+  return true;
+}
+
 bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
                             uint8_t vmmId, uint16_t chNo, uint16_t bcid,
                             uint16_t tdc, uint16_t adc, bool overThresholdFlag,
@@ -73,7 +129,7 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
     if (m_config.pSaveWhat >= 10) {
       uint64_t ts = 0;
       for (auto const &fec : m_config.pFecs) {
-        if (fec != 384) {
+        if (fec != NUMFECS - 1) {
           if (ts == 0 || ts > m_stats.GetOldTriggerTimestamp(fec)) {
             ts = m_stats.GetOldTriggerTimestamp(fec);
           }

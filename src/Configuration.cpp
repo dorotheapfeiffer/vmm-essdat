@@ -31,7 +31,7 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
 
   std::cout << "\n\nFlags:\n" << std::endl;
   std::cout << "-f:     PCAPNG file created with wireshark or tcdump "
-               "(*.pcapng), coming from the SRS or the ESS readout.\n"
+               "(*.pcapng), coming from the VMM or the CAEN readout.\n"
             << std::endl;
   std::cout
       << "Definition of detector geometry: EITHER the flags -vmm, -axis and "
@@ -147,7 +147,7 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
             << std::endl;
   std::cout << "-t0:    Time 0 correction in seconds "
                "The correction value is subtracted from all timestamps.\n"
-               "        For ESS data format: if the correction is 0,"
+               "        For VMM data format: if the correction is 0,"
                " the first timestamp of the run is used as correction. "
                "        For SRS data format: SRS runs start at time 0s anyway,"
                " so the correction is only applied if the value is positive. "
@@ -216,7 +216,7 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
   std::cout << "           channel representing bit 0 = strip 0, channel for "
                "bit 1  = strip 1 and so on."
             << std::endl;
-  std::cout << "        7: time-of-flight (ESS data format)" << std::endl;
+  std::cout << "        7: time-of-flight (VMM data format)" << std::endl;
 
   std::cout << "-crl:   Valid clusters normally have the same amount of charge "
                "in both detector planes (ratio of charge plane 0/charge plane "
@@ -279,11 +279,9 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
             << std::endl;
   std::cout
       << "-df:    Data format: The pcap files can have different data formats, "
-      << "depending on the firmware on the FEC or assister card.\n"
-      << "        SRS (default): FEC card, and time stamps and offsets are "
-         "sent in markers, offset is interpreted as signed number and valid "
-         "offsets goes from -1 to 15\n"
-      << "        ESS: used for assister cards, no markers, timestamps are "
+      << "depending on the firmware and the digtizer.\n"
+      << "        CAEN: R5560 digitizer \n"
+      << "        VMM: used for assister cards, timestamps are "
          "part of the data"
       << std::endl;
   std::cout
@@ -342,7 +340,7 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
       pTime0Correction = atof(argv[i + 1]);
     } else if (strncmp(argv[i], "-bc", 3) == 0) {
       pBC = atof(argv[i + 1]);
-      // ESS SRS firmware has 44.444444 MHz clock
+      // ESS VMM firmware has 44.444444 MHz clock
       if (pBC >= 44.4 && pBC <= 44.5) {
         pBCTime_ns = 22.5;
         pOffsetPeriod = 4096.0 * pBCTime_ns;
@@ -716,14 +714,30 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
         pHighMultiplicity = true;
       }
     } else if (strncmp(argv[i], "-df", 3) == 0) {
-      pDataFormat = argv[i + 1];
-      std::vector<std::string> v_valid_values = {"ESS", "ess"};
+      std::string s = argv[i + 1];
+      sscanf(s.c_str(), "%x", &pDataFormat);
+
+      // VMM
+      // TREX 64 (0x40)
+      // NMX 68 (0x44)
+      // FREIA 72 (0x48)
+      // TBL MB 73 (0x49)
+      // ESTIA 76 (0x4C)
+      // CAEN R5560
+      //  Loki 0x30 (48)
+      //  TBL He3 0x32 (50)
+      //  BIFROST 0x34 (52)
+      //  Miracles 0x38 (56)
+      //  CSPEC 0x3C (60)
+      std::vector<int> v_valid_values = {0x40, 0x44, 0x48, 0x49, 0x4c,
+                                         0x30, 0x32, 0x34, 0x38, 0x3C};
       auto searchValid =
           std::find(v_valid_values.begin(), v_valid_values.end(), pDataFormat);
       if (searchValid == v_valid_values.end()) {
+        std::cout << pDataFormat << std::endl;
         return PrintUsage("The data format parameter -df accepts only the "
-                          "values ESS!",
-                          nullptr);
+                          "instruments that use VMM or CAEN R5560!",
+                          argv[i + 1]);
       }
     } else {
       return PrintUsage("Wrong type of argument!", argv[i]);
@@ -745,7 +759,8 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     return PrintUsage("Wrong extension: .json file required for calibration!",
                       nullptr);
   }
-  if (!vmmsFound && pGeometryFile.find(".json") == std::string::npos) {
+  if (pDataFormat >= 0x40 && pDataFormat <= 0x4C &&
+      (!vmmsFound && pGeometryFile.find(".json") == std::string::npos)) {
     return PrintUsage("Detectors, planes, fecs and VMMs have to be defined, or "
                       "a geometry file loaded!",
                       nullptr);
@@ -925,6 +940,13 @@ bool Configuration::GetDetectorPlane(std::pair<uint8_t, uint8_t> dp) {
 }
 
 bool Configuration::CreateMapping() {
+  if (pDataFormat >= 0x30 && pDataFormat <= 0x3C) {
+    pFecs.clear();
+    for (int fec = 0; fec <= NUMFECS - 1; fec++) {
+      pFecs.push_back(fec);
+    }
+    return true;
+  }
   if (pGeometryFile.find(".json") == std::string::npos && !vmmsFound) {
     return PrintUsage("Geometry definiton missing! Define geometry either via "
                       "the -vmm and -axis parameter, or by -geo!",
@@ -1209,9 +1231,8 @@ bool Configuration::CreateMapping() {
     }
   }
   // Dummy fec number for parser errors
-  if (pDataFormat == "ESS") {
-    pFecs.push_back(384);
-  }
+  pFecs.push_back(NUMFECS - 1);
+
   bool ret = CheckDetectorParameters("pMinClusterSize", pMinClusterSize);
   if (ret == false) {
     return false;
