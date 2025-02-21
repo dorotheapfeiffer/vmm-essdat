@@ -40,28 +40,26 @@ bool Clusterer::SaveHitsR5560(double readoutTimestamp, uint8_t ringId,
                               uint8_t om, uint32_t counter, double pulseTime) {
 
   bool newData = false;
-  if (m_stats.GetFirstTriggerTimestamp(NUMFECS - 1) == 0) {
-    m_stats.SetFirstTriggerTimestamp(NUMFECS - 1, readoutTimestamp);
+  if (m_stats.GetFirstTriggerTimestamp(ringId * FENS_PER_RING + fenId) == 0) {
+    m_stats.SetFirstTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                     readoutTimestamp);
   }
-  if (m_stats.GetFirstTriggerTimestamp(ringId * 16 + fenId) == 0) {
-    m_stats.SetFirstTriggerTimestamp(ringId * 16 + fenId, readoutTimestamp);
-  }
-
-  if (m_stats.GetMaxTriggerTimestamp(NUMFECS - 1) < readoutTimestamp) {
-    m_stats.SetMaxTriggerTimestamp(NUMFECS - 1, readoutTimestamp);
-  }
-  if (m_stats.GetMaxTriggerTimestamp(ringId * 16 + fenId) < readoutTimestamp) {
-    m_stats.SetMaxTriggerTimestamp(ringId * 16 + fenId, readoutTimestamp);
+  if (m_stats.GetMaxTriggerTimestamp(ringId * FENS_PER_RING + fenId) <
+      readoutTimestamp) {
+    m_stats.SetMaxTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                   readoutTimestamp);
   }
   double buffer_interval_ns = 10000000.0;
-  if (readoutTimestamp >= m_stats.GetOldTriggerTimestamp(ringId * 16 + fenId) +
-                              buffer_interval_ns) {
+  if (readoutTimestamp >=
+      m_stats.GetOldTriggerTimestamp(ringId * FENS_PER_RING + fenId) +
+          buffer_interval_ns) {
     newData = true;
   }
 
   if (newData) {
     m_rootFile->SaveHits();
-    m_stats.SetOldTriggerTimestamp(ringId * 16 + fenId, readoutTimestamp);
+    m_stats.SetOldTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                   readoutTimestamp);
   }
 
   m_hitNr++;
@@ -129,7 +127,7 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
     if (m_config.pSaveWhat >= 10) {
       uint64_t ts = 0;
       for (auto const &fec : m_config.pFecs) {
-        if (fec != NUMFECS - 1) {
+        if (fec != STATISTIC_FEN) {
           if (ts == 0 || ts > m_stats.GetOldTriggerTimestamp(fec)) {
             ts = m_stats.GetOldTriggerTimestamp(fec);
           }
@@ -184,7 +182,10 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
     }
   }
 
-  double bunchIntensity = m_config.pMapPulsetimeIntensity[thePulseTime];
+  double bunchIntensity = 0;
+  if (m_config.pUseBunchFile == true) {
+    bunchIntensity = m_config.pMapPulsetimeIntensity[thePulseTime];
+  }
 
   if (m_config.pSaveWhat % 2 == 1) {
     if (std::find(m_config.pSaveHits.begin(), m_config.pSaveHits.end(), det) !=
@@ -206,7 +207,9 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
       theHit.over_threshold = overThresholdFlag;
       theHit.chip_time = chipTime;
       theHit.time = totalTime;
-      if (theHit.bunch_intensity >= 1E+11 && theHit.bunch_intensity <= 1E+12) {
+      if (m_config.pUseBunchFile == false ||
+          (theHit.bunch_intensity >= 1E+11 &&
+           theHit.bunch_intensity <= 1E+12)) {
         m_rootFile->AddHits(std::move(theHit));
       }
     }

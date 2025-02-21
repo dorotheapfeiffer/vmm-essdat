@@ -347,7 +347,7 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
       }
       // 88.0525 MHz ESS clock, half of that is BC clock
       else if (pBC >= 44.0 && pBC <= 44.1) {
-        pBCTime_ns = 22.7137219;
+        pBCTime_ns = 22.713721927259;
         pOffsetPeriod = 4096.0 * pBCTime_ns;
       } else {
         pBCTime_ns = (1000.0 / pBC);
@@ -716,7 +716,6 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     } else if (strncmp(argv[i], "-df", 3) == 0) {
       std::string s = argv[i + 1];
       sscanf(s.c_str(), "%x", &pDataFormat);
-
       // VMM
       // TREX 64 (0x40)
       // NMX 68 (0x44)
@@ -744,16 +743,13 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     }
   }
   if (!fFound) {
-    return PrintUsage("Data file has to be loaded with -f data.h5!", nullptr);
+    return PrintUsage("Data file has to be loaded with -f data.pcapng!",
+                      nullptr);
   }
 
-  if (fFound && pFileName.find(".h5") == std::string::npos) {
-    if (pFileName.find(".pcapng") != std::string::npos) {
-      pIsPcap = true;
-    } else
-      return PrintUsage(
-          "Wrong extension: .h5 or .pcap file required for data files!",
-          nullptr);
+  if (pFileName.find(".pcapng") == std::string::npos) {
+    return PrintUsage("Wrong extension: .pcapng file required for data files!",
+                      nullptr);
   }
   if (useCalibration && pCalFilename.find(".json") == std::string::npos) {
     return PrintUsage("Wrong extension: .json file required for calibration!",
@@ -942,9 +938,13 @@ bool Configuration::GetDetectorPlane(std::pair<uint8_t, uint8_t> dp) {
 bool Configuration::CreateMapping() {
   if (pDataFormat >= 0x30 && pDataFormat <= 0x3C) {
     pFecs.clear();
-    for (int fec = 0; fec <= NUMFECS - 1; fec++) {
-      pFecs.push_back(fec);
+    for (int ring = 0; ring < NUM_RINGS; ring++) {
+      for (int fec = 0; fec < FENS_PER_RING; fec++) {
+        pFecs.push_back(ring * FENS_PER_RING + fec);
+      }
     }
+    // Dummy fec number for parser errors
+    pFecs.push_back(STATISTIC_FEN);
     return true;
   }
   if (pGeometryFile.find(".json") == std::string::npos && !vmmsFound) {
@@ -952,7 +952,7 @@ bool Configuration::CreateMapping() {
                       "the -vmm and -axis parameter, or by -geo!",
                       nullptr);
   }
-  for (int f = 0; f < NUMFECS; f++) {
+  for (int f = 0; f < NUM_FENS; f++) {
     for (int v = 0; v < 16; v++) {
       pDetectors[f][v] = -1;
       pPlanes[f][v] = -1;
@@ -1042,7 +1042,7 @@ bool Configuration::CreateMapping() {
       }
     }
 
-    for (int f = 0; f < NUMFECS; f++) {
+    for (int f = 0; f < NUM_FENS; f++) {
       for (int v = 0; v < 16; v++) {
         auto searchFecChip = pFecChip_DetectorPlane.find(std::make_pair(f, v));
         if (searchFecChip != pFecChip_DetectorPlane.end()) {
@@ -1123,23 +1123,20 @@ bool Configuration::CreateMapping() {
     try {
       auto vmm_geos = Root["vmm_geometry"];
       for (auto &geo : vmm_geos) {
-        auto fec = geo["fec"].get<uint16_t>();
+        auto fen = geo["fen"].get<uint16_t>();
+        auto ring = geo["ring"].get<uint16_t>();
         auto vmm = geo["vmm"].get<uint8_t>();
         auto detector = geo["detector"].get<uint8_t>();
-        auto strips0 = geo["id0"];
-        auto strips1 = geo["id1"];
-        uint8_t plane = 0;
+        std::string labelDetector = geo["label_detector"].get<std::string>();
+        std::string labelPlane = geo["label_plane"].get<std::string>();
 
-        if (strips0.size() != 64 ||
-            (strips1.size() > 0 && strips1.size() < 64)) {
+        auto strips0 = geo["id"];
+        uint8_t plane = 0;
+        uint16_t fec = ring * FENS_PER_RING + fen;
+
+        if (strips0.size() != 64) {
           throw std::runtime_error(
               "Wrong lengths of id0 or id1 arrays in geometry file.");
-        } else if (strips1.size() == 64) {
-          pIsPads[detector] = true;
-          auto searchMap = pAxes.find(std::make_pair(detector, 0));
-          if (searchMap == pAxes.end()) {
-            pAxes.emplace(std::make_pair(std::make_pair(detector, 0), 0));
-          }
         } else {
           plane = geo["plane"].get<uint8_t>();
           pIsPads[detector] = false;
@@ -1183,7 +1180,6 @@ bool Configuration::CreateMapping() {
         if (searchDet == pDets.end()) {
           pDets.emplace(detector, pDets.size());
           pChannels0[detector] = 0;
-          pChannels1[detector] = 0;
         }
 
         bool found = false;
@@ -1198,6 +1194,9 @@ bool Configuration::CreateMapping() {
         if (found == false) {
           pDetectorPlane_Fec.emplace(
               std::make_pair(std::make_pair(detector, plane), fec));
+          pDetectorPlane_Labels.emplace(
+              std::make_pair(std::make_pair(detector, plane),
+                             std::make_pair(labelDetector, labelPlane)));
         }
 
         // Search whether there is a new fec/chip combination
@@ -1209,21 +1208,14 @@ bool Configuration::CreateMapping() {
           for (size_t ch = 0; ch < strips0.size(); ch++) {
             int s0 = strips0[ch].get<int>();
             pPositions[fec][vmm][ch] = s0;
-            if (pIsPads[detector]) {
-              int s1 = strips1[ch].get<int>();
-              pPositions[fec][vmm][ch] = s1;
-              if (s0 > pChannels0[detector]) {
-                pChannels0[detector] = s0;
-              }
-              if (s1 > pChannels1[detector]) {
-                pChannels1[detector] = s1;
-              }
-            }
           }
 
           // Add the new fec/chip pair to the list
           pFecChip_DetectorPlane.emplace(std::make_pair(
               std::make_pair(fec, vmm), std::make_pair(detector, plane)));
+          pFecChip_DetectorPlane_Labels.emplace(
+              std::make_pair(std::make_pair(fec, vmm),
+                             std::make_pair(labelDetector, labelPlane)));
         }
       }
     } catch (const std::exception &exc) {
@@ -1231,7 +1223,7 @@ bool Configuration::CreateMapping() {
     }
   }
   // Dummy fec number for parser errors
-  pFecs.push_back(NUMFECS - 1);
+  pFecs.push_back(STATISTIC_FEN);
 
   bool ret = CheckDetectorParameters("pMinClusterSize", pMinClusterSize);
   if (ret == false) {

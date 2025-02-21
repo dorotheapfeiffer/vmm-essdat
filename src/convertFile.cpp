@@ -29,9 +29,6 @@ int main(int argc, char **argv) {
     if (!m_config.CalculateTransform()) {
       return -1;
     }
-    if (!m_config.pIsPcap) {
-      return 0;
-    }
   } else {
     return -1;
   }
@@ -39,10 +36,9 @@ int main(int argc, char **argv) {
   uint64_t last_time = 0;
 
   if (m_config.pShowStats) {
+    m_stats.CreateFECStats(m_config);
     m_stats.CreateClusterStats(m_config);
-    if (m_config.pIsPcap) {
-      m_stats.CreatePCAPStats(m_config);
-    }
+    m_stats.CreatePCAPStats(m_config);
   }
   if (m_config.pUseBunchFile == true) {
     bunchFile = TFile::Open(m_config.pBunchFile.c_str(), "READ");
@@ -80,6 +76,9 @@ int main(int argc, char **argv) {
   double firstTime = 0;
   char buffer[10000];
   Clusterer *m_Clusterer = new Clusterer(m_config, m_stats);
+  // std::cout << std::setprecision(10);
+  // std::cout << "m_config.pBCTime_ns " << m_config.pBCTime_ns << std::endl;
+
   VMM3Parser *parser = new VMM3Parser();
   R5560Parser *parser_r5560 = new R5560Parser();
 
@@ -162,7 +161,7 @@ int main(int argc, char **argv) {
     // time due to jitter
     double theTriggerTime = 0;
     if (temp_pulseTime - pulseTime > 1.0E+06) {
-      m_stats.IncrementCounter("NumberOfTriggers", NUMFECS - 1);
+      m_stats.IncrementCounter("NumberOfTriggers", STATISTIC_FEN);
       pulseTime = temp_pulseTime;
       pulse_time_ns = temp_pulseTime_ns;
       if (m_config.pUseBunchFile == true) {
@@ -178,34 +177,37 @@ int main(int argc, char **argv) {
             cnt++;
           }
           if (cnt == 1) {
-            m_stats.IncrementCounter("NumberOfMatchedTriggers", NUMFECS - 1);
+            m_stats.IncrementCounter("NumberOfMatchedTriggers", STATISTIC_FEN);
             if (pulseIntensity >= 1.0E+7 && pulseIntensity < 1.0E+8) {
-              m_stats.IncrementCounter("NumberOfBunches_1E7_1E8", NUMFECS - 1);
+              m_stats.IncrementCounter("NumberOfBunches_1E7_1E8",
+                                       STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E7_1E8",
-                                       NUMFECS - 1, pulseIntensity);
+                                       STATISTIC_FEN, pulseIntensity);
             } else if (pulseIntensity >= 1.0E+8 && pulseIntensity < 1.0E+9) {
-              m_stats.IncrementCounter("NumberOfBunches_1E8_1E9", NUMFECS - 1);
+              m_stats.IncrementCounter("NumberOfBunches_1E8_1E9",
+                                       STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E8_1E9",
-                                       NUMFECS - 1, pulseIntensity);
+                                       STATISTIC_FEN, pulseIntensity);
             } else if (pulseIntensity >= 1.0E+9 && pulseIntensity < 1.0E+10) {
-              m_stats.IncrementCounter("NumberOfBunches_1E9_1E10", NUMFECS - 1);
+              m_stats.IncrementCounter("NumberOfBunches_1E9_1E10",
+                                       STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E9_1E10",
-                                       NUMFECS - 1, pulseIntensity);
+                                       STATISTIC_FEN, pulseIntensity);
             } else if (pulseIntensity >= 1.0E+10 && pulseIntensity < 1.0E+11) {
               m_stats.IncrementCounter("NumberOfBunches_1E10_1E11",
-                                       NUMFECS - 1);
+                                       STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E10_1E11",
-                                       NUMFECS - 1, pulseIntensity);
+                                       STATISTIC_FEN, pulseIntensity);
             } else if (pulseIntensity >= 1.0E+11 && pulseIntensity < 1.0E+12) {
               m_stats.IncrementCounter("NumberOfBunches_1E11_1E12",
-                                       NUMFECS - 1);
+                                       STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E11_1E12",
-                                       NUMFECS - 1, pulseIntensity);
+                                       STATISTIC_FEN, pulseIntensity);
             } else if (pulseIntensity >= 1.0E+12 && pulseIntensity < 1.0E+13) {
               m_stats.IncrementCounter("NumberOfBunches_1E12_1E13",
-                                       NUMFECS - 1);
+                                       STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E12_1E13",
-                                       NUMFECS - 1, pulseIntensity);
+                                       STATISTIC_FEN, pulseIntensity);
             }
             m_config.pMapPulsetimeIntensity.emplace(
                 std::make_pair(pulseTime, pulseIntensity));
@@ -215,12 +217,12 @@ int main(int argc, char **argv) {
                std::endl;*/
           } else {
             m_stats.IncrementCounter("NumberOfDoubleMatchedTriggers",
-                                     NUMFECS - 1);
+                                     STATISTIC_FEN);
             m_config.pMapPulsetimeIntensity.emplace(
                 std::make_pair(pulseTime, 0));
           }
         } else {
-          m_stats.IncrementCounter("NumberOfUnMatchedTriggers", NUMFECS - 1);
+          m_stats.IncrementCounter("NumberOfUnMatchedTriggers", STATISTIC_FEN);
           m_config.pMapPulsetimeIntensity.emplace(std::make_pair(pulseTime, 0));
         }
       }
@@ -238,9 +240,9 @@ int main(int argc, char **argv) {
       for (int i = 0; i < hits; i++) {
         auto &hit = parser->Result[i];
         uint16_t assisterId =
-            static_cast<uint8_t>(hit.RingId / 2) * 16 + hit.FENId;
+            static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
         if (firstTime == 0) {
-          firstTime = hit.TimeHigh * 1.0E+09;
+          firstTime = hit.TimeHigh;
         }
 
         double complete_timestamp = 0;
@@ -250,13 +252,12 @@ int main(int argc, char **argv) {
           //  the timestamp has to be truncated to 52 bit
           //  The easiest to have a relative timestamp with respect to the
           //  start of the run
-          complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
+          complete_timestamp = (hit.TimeHigh - firstTime) * 1.0E+09 +
                                hit.TimeLow * m_config.pBCTime_ns * 0.5;
         } else {
           // If several files will be joined later, it is recommended to
           // just remove the most significant bits of the 64 bit timestamp
-          complete_timestamp = hit.TimeHigh * 1.0E+09 -
-                               t0_correction * 1.0E+09 +
+          complete_timestamp = (hit.TimeHigh - t0_correction) * 1.0E+09 +
                                hit.TimeLow * m_config.pBCTime_ns * 0.5;
         }
 
@@ -341,7 +342,11 @@ int main(int argc, char **argv) {
       total_hits += hits;
       for (int i = 0; i < hits; i++) {
         auto &hit = parser_r5560->Result[i];
-        uint16_t fenid = static_cast<uint8_t>(hit.RingId / 2) * 16 + hit.FENId;
+        uint16_t fenid =
+            static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
+        // std::cout << "Fibre " << (int)hit.RingId << ", Ring " <<
+        // static_cast<int>(hit.RingId / 2) << ", FEN on ring " <<
+        // (int)hit.FENId << ", FEN " << (int)fenid << std::endl;
         if (firstTime == 0) {
           firstTime = hit.TimeHigh * 1.0E+09;
         }
@@ -365,9 +370,9 @@ int main(int argc, char **argv) {
 
         m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
         bool result = m_Clusterer->SaveHitsR5560(
-            complete_timestamp, hit.RingId, hit.FENId, hit.Group,
-            hit.AmplitudeA, hit.AmplitudeB, hit.AmplitudeC, hit.AmplitudeD,
-            hit.OM, hit.Counter, pulseTime);
+            complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
+            hit.Group, hit.AmplitudeA, hit.AmplitudeB, hit.AmplitudeC,
+            hit.AmplitudeD, hit.OM, hit.Counter, pulseTime);
         if (result == false ||
             (total_hits >= m_config.nHits && m_config.nHits > 0)) {
           doContinue = false;
@@ -379,57 +384,58 @@ int main(int argc, char **argv) {
 
   m_Clusterer->SaveDate(pcap.firstPacketSeconds, pcap.firstPacketDate,
                         pcap.lastPacketSeconds, pcap.lastPacketDate,
-                        m_stats.GetCounter("NumberOfTriggers", NUMFECS - 1));
-  m_stats.IncrementCounter("ErrorBuffer", NUMFECS - 1,
+                        m_stats.GetCounter("NumberOfTriggers", STATISTIC_FEN));
+  m_stats.IncrementCounter("ErrorBuffer", STATISTIC_FEN,
                            readoutParser.Stats.ErrorBuffer);
-  m_stats.IncrementCounter("ErrorSize", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorSize", STATISTIC_FEN,
                            readoutParser.Stats.ErrorSize);
-  m_stats.IncrementCounter("ErrorVersion", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorVersion", STATISTIC_FEN,
                            readoutParser.Stats.ErrorVersion);
-  m_stats.IncrementCounter("ErrorCookie", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorCookie", STATISTIC_FEN,
                            readoutParser.Stats.ErrorCookie);
-  m_stats.IncrementCounter("ErrorPad", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorPad", STATISTIC_FEN,
                            readoutParser.Stats.ErrorPad);
-  m_stats.IncrementCounter("ErrorOutputQueue", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorOutputQueue", STATISTIC_FEN,
                            readoutParser.Stats.ErrorOutputQueue);
-  m_stats.IncrementCounter("ErrorTypeSubType", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorTypeSubType", STATISTIC_FEN,
                            readoutParser.Stats.ErrorTypeSubType);
-  m_stats.IncrementCounter("ErrorSeqNum", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorSeqNum", STATISTIC_FEN,
                            readoutParser.Stats.ErrorSeqNum);
-  m_stats.IncrementCounter("ErrorTimeHigh", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorTimeHigh", STATISTIC_FEN,
                            readoutParser.Stats.ErrorTimeHigh);
-  m_stats.IncrementCounter("ErrorTimeFrac", NUMFECS - 1,
+  m_stats.IncrementCounter("ErrorTimeFrac", STATISTIC_FEN,
                            readoutParser.Stats.ErrorTimeFrac);
-  m_stats.IncrementCounter("HeartBeats", NUMFECS - 1,
+  m_stats.IncrementCounter("HeartBeats", STATISTIC_FEN,
                            readoutParser.Stats.HeartBeats);
-  m_stats.IncrementCounter("GoodFrames", NUMFECS - 1, goodFrames);
-  m_stats.IncrementCounter("BadFrames", NUMFECS - 1, badFrames);
-  m_stats.IncrementCounter("TotalFrames", NUMFECS - 1, pcappackets);
+  m_stats.IncrementCounter("GoodFrames", STATISTIC_FEN, goodFrames);
+  m_stats.IncrementCounter("BadFrames", STATISTIC_FEN, badFrames);
+  m_stats.IncrementCounter("TotalFrames", STATISTIC_FEN, pcappackets);
 
-  m_stats.IncrementCounter("ParserErrorSize", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorSize", STATISTIC_FEN,
                            parser->Stats.ErrorSize);
-  m_stats.IncrementCounter("ParserErrorRing", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorRing", STATISTIC_FEN,
                            parser->Stats.ErrorRing);
-  m_stats.IncrementCounter("ParserErrorFEN", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorFEN", STATISTIC_FEN,
                            parser->Stats.ErrorFEN);
-  m_stats.IncrementCounter("ParserErrorDataLength", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorDataLength", STATISTIC_FEN,
                            parser->Stats.ErrorDataLength);
-  m_stats.IncrementCounter("ParserErrorTimeFrac", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorTimeFrac", STATISTIC_FEN,
                            parser->Stats.ErrorTimeFrac);
-  m_stats.IncrementCounter("ParserErrorBC", NUMFECS - 1, parser->Stats.ErrorBC);
-  m_stats.IncrementCounter("ParserErrorADC", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorBC", STATISTIC_FEN,
+                           parser->Stats.ErrorBC);
+  m_stats.IncrementCounter("ParserErrorADC", STATISTIC_FEN,
                            parser->Stats.ErrorADC);
-  m_stats.IncrementCounter("ParserErrorVMM", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorVMM", STATISTIC_FEN,
                            parser->Stats.ErrorVMM);
-  m_stats.IncrementCounter("ParserErrorChannel", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserErrorChannel", STATISTIC_FEN,
                            parser->Stats.ErrorChannel);
-  m_stats.IncrementCounter("ParserReadouts", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserReadouts", STATISTIC_FEN,
                            parser->Stats.Readouts);
-  m_stats.IncrementCounter("ParserCalibReadouts", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserCalibReadouts", STATISTIC_FEN,
                            parser->Stats.CalibReadouts);
-  m_stats.IncrementCounter("ParserDataReadouts", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserDataReadouts", STATISTIC_FEN,
                            parser->Stats.DataReadouts);
-  m_stats.IncrementCounter("ParserOverThreshold", NUMFECS - 1,
+  m_stats.IncrementCounter("ParserOverThreshold", STATISTIC_FEN,
                            parser->Stats.OverThreshold);
   m_Clusterer->FinishAnalysis();
 
@@ -460,40 +466,43 @@ int main(int argc, char **argv) {
   std::cout << "****************************************" << std::endl;
   if (m_config.pUseBunchFile == true) {
     std::cout
-        << m_stats.GetCounter("NumberOfBunches_1E7_1E8", NUMFECS - 1)
+        << m_stats.GetCounter("NumberOfBunches_1E7_1E8", STATISTIC_FEN)
         << " bunches (between 1E+7 and 1E+8 protons), with total intensity of "
         << std::fixed << std::setprecision(12)
-        << m_stats.GetCounter("IntensityOfBunches_1E7_1E8", NUMFECS - 1)
+        << m_stats.GetCounter("IntensityOfBunches_1E7_1E8", STATISTIC_FEN)
         << " protons" << std::endl;
     std::cout
-        << m_stats.GetCounter("NumberOfBunches_1E8_1E9", NUMFECS - 1)
+        << m_stats.GetCounter("NumberOfBunches_1E8_1E9", STATISTIC_FEN)
         << " bunches (between 1E+8 and 1E+9 protons), with total intensity of "
         << std::fixed << std::setprecision(12)
-        << m_stats.GetCounter("IntensityOfBunches_1E8_1E9", NUMFECS - 1)
+        << m_stats.GetCounter("IntensityOfBunches_1E8_1E9", STATISTIC_FEN)
         << " protons" << std::endl;
     std::cout
-        << m_stats.GetCounter("NumberOfBunches_1E9_1E10", NUMFECS - 1)
+        << m_stats.GetCounter("NumberOfBunches_1E9_1E10", STATISTIC_FEN)
         << " bunches (between 1E+9 and 1E+10 protons), with total intensity of "
         << std::fixed << std::setprecision(12)
-        << m_stats.GetCounter("IntensityOfBunches_1E9_1E10", NUMFECS - 1)
+        << m_stats.GetCounter("IntensityOfBunches_1E9_1E10", STATISTIC_FEN)
         << " protons" << std::endl;
-    std::cout << m_stats.GetCounter("NumberOfBunches_1E10_1E11", NUMFECS - 1)
+    std::cout << m_stats.GetCounter("NumberOfBunches_1E10_1E11", STATISTIC_FEN)
               << " bunches (between 1E+10 and 1E+11 protons), with total "
                  "intensity of "
               << std::fixed << std::setprecision(12)
-              << m_stats.GetCounter("IntensityOfBunches_1E10_1E11", NUMFECS - 1)
+              << m_stats.GetCounter("IntensityOfBunches_1E10_1E11",
+                                    STATISTIC_FEN)
               << " protons" << std::endl;
-    std::cout << m_stats.GetCounter("NumberOfBunches_1E11_1E12", NUMFECS - 1)
+    std::cout << m_stats.GetCounter("NumberOfBunches_1E11_1E12", STATISTIC_FEN)
               << " bunches (between 1E+11 and 1E+12 protons), with total "
                  "intensity of "
               << std::fixed << std::setprecision(12)
-              << m_stats.GetCounter("IntensityOfBunches_1E11_1E12", NUMFECS - 1)
+              << m_stats.GetCounter("IntensityOfBunches_1E11_1E12",
+                                    STATISTIC_FEN)
               << " protons" << std::endl;
-    std::cout << m_stats.GetCounter("NumberOfBunches_1E12_1E13", NUMFECS - 1)
+    std::cout << m_stats.GetCounter("NumberOfBunches_1E12_1E13", STATISTIC_FEN)
               << " bunches (between 1E+12 and 1E+13 protons), with total "
                  "intensity of "
               << std::fixed << std::setprecision(12)
-              << m_stats.GetCounter("IntensityOfBunches_1E12_1E13", NUMFECS - 1)
+              << m_stats.GetCounter("IntensityOfBunches_1E12_1E13",
+                                    STATISTIC_FEN)
               << " protons" << std::endl;
     std::cout << "****************************************" << std::endl;
   }

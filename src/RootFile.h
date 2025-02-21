@@ -39,6 +39,9 @@ public:
 private:
   Configuration &m_config;
   RootFile(Configuration &config);
+  void CreateCAENHistos();
+  void CreateMonitoringHistos();
+  void CreateCalibHistos();
 
   ~RootFile();
   static RootFile *m_rootFile;
@@ -67,14 +70,10 @@ private:
   std::map<std::pair<uint8_t, std::string>, int> m_map_TH1D;
   std::map<std::tuple<uint16_t, uint8_t, std::string>, int> m_map_calib_TH2D;
 
+  std::map<std::tuple<uint16_t, uint8_t, std::string>, int> m_monitoring_TH1D;
+
   std::vector<TH1D *> m_TH1D;
   std::vector<TH2D *> m_TH2D;
   std::vector<TH2D *> m_calib_TH2D;
-  std::vector<TH1D *> m_delta_t_ring;
-  std::vector<TH1D *> m_delta_t_fen;
-  std::vector<TH1D *> m_delta_t_tube;
-  std::vector<int> m_lastTimeTube;
-  std::vector<int> m_lastTimeFen;
-  std::vector<int> m_lastTimeRing;
   ClassDef(RootFile, 1)
 };

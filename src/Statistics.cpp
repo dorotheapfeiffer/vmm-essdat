@@ -56,7 +56,7 @@ void Statistics::CreatePCAPStats(Configuration &config) {
   for (auto const &fec : config.pFecs) {
     m_counters.emplace(
         std::make_pair(std::make_pair(fec, "ParserDataReadouts"), 0));
-    if (fec == NUMFECS - 1) {
+    if (fec == STATISTIC_FEN) {
       m_counters.emplace(std::make_pair(std::make_pair(fec, "ErrorBuffer"), 0));
       m_counters.emplace(std::make_pair(std::make_pair(fec, "ErrorPad"), 0));
       m_counters.emplace(
@@ -424,7 +424,7 @@ void Statistics::PrintClusterStats(Configuration &config) {
 
 void Statistics::PrintFECStats(Configuration &config) {
   for (auto const &fec : config.pFecs) {
-    if (fec < NUMFECS - 1) {
+    if (fec < STATISTIC_FEN) {
       uint64_t first = GetFirstTriggerTimestamp(fec);
       uint64_t max = GetMaxTriggerTimestamp(fec);
 
@@ -450,7 +450,7 @@ void Statistics::PrintFECStats(Configuration &config) {
         std::cout << "****************************************" << std::endl;
       }
 
-    } else if (fec == NUMFECS - 1) {
+    } else if (fec == STATISTIC_FEN) {
       uint64_t first = GetFirstTriggerTimestamp(fec);
       uint64_t max = GetMaxTriggerTimestamp(fec);
 

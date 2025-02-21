@@ -24,10 +24,10 @@ struct HitR5560 {
   uint8_t fen;
   uint8_t group;
   uint32_t counter;
-  uint16_t ampa;
-  uint16_t ampb;
-  uint16_t ampc;
-  uint16_t ampd;
+  int16_t ampa;
+  int16_t ampb;
+  int16_t ampc;
+  int16_t ampd;
   uint8_t om;
   double pulse_time;
   double time;

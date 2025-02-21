@@ -6,7 +6,13 @@
 #include <sstream>
 #include <vector>
 
-#define NUMFECS 193
+#define FENS_PER_RING 16
+#define NUM_RINGS 12
+#define NUM_FENS FENS_PER_RING *NUM_RINGS
+#define STATISTIC_FEN NUM_FENS
+
+#define BINNING_FACTOR 1
+#define NUM_TUBES 16
 
 class Configuration {
 private:
@@ -91,6 +97,7 @@ public:
   bool createJSON = false;
   bool useCalibration = false;
   bool calibrationHistogram = false;
+  bool monitoringHistogram = false;
   int pSaveWhat = 111;
   std::string pConditionCoincidence = "center-of-mass";
 
@@ -103,15 +110,21 @@ public:
   std::string pCalFilename = "";
   std::string pInfo = "";
 
-  double pBCTime_ns = 22.7137219;
+  double pBCTime_ns = 22.713721927259;
   double pOffsetPeriod = 4096.0 * pBCTime_ns;
 
   std::map<std::tuple<uint8_t, uint8_t>, int> pChannels;
   std::map<uint8_t, int> pChannels0;
-  std::map<uint8_t, int> pChannels1;
   std::map<std::pair<uint8_t, uint8_t>, std::pair<uint8_t, uint8_t>>
       pFecChip_DetectorPlane;
   std::multimap<std::pair<uint8_t, uint8_t>, uint8_t> pDetectorPlane_Fec;
+
+  std::map<std::pair<uint8_t, uint8_t>, std::pair<std::string, std::string>>
+      pFecChip_DetectorPlane_Labels;
+  std::multimap<std::pair<uint8_t, uint8_t>,
+                std::pair<std::string, std::string>>
+      pDetectorPlane_Labels;
+
   std::map<std::pair<uint8_t, uint8_t>, uint32_t> pOffsets;
   std::map<std::pair<uint8_t, uint8_t>, uint32_t> p_DetPlane_idx;
   std::map<uint8_t, uint8_t> pDets;
@@ -125,7 +138,6 @@ public:
   bool fFound = false;
   bool vmmsFound = false;
   int pAlgo = 0;
-  bool pIsPcap = false;
   bool pShowStats = true;
   bool pTimeZero = false;
   bool pHighMultiplicity = false;
@@ -137,9 +149,9 @@ public:
   std::string pBunchTree = "PKUP";
   bool pUseBunchFile = false;
 
-  int pPositions[NUMFECS][16][64];
-  int pDetectors[NUMFECS][16];
-  int pPlanes[NUMFECS][16];
+  int pPositions[NUM_FENS + 1][16][64];
+  int pDetectors[NUM_FENS + 1][16];
+  int pPlanes[NUM_FENS + 1][16];
   std::map<double, double> pMapPulsetimeIntensity;
   std::map<double, double> pMapTriggertimeIntensity;
 };
