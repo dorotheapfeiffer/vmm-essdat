@@ -109,14 +109,14 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
   }
 
   bool newData = false;
-  double buffer_interval_ns = 10000000.0;
+  double buffer_interval_ns = 10000000000.0;
   if (readoutTimestamp >=
       m_stats.GetOldTriggerTimestamp(fecId) + buffer_interval_ns) {
     newData = true;
-    /*std::cout << "new data: hit " << m_hitNr << ", readoutTime "
+    std::cout << "new data: hit " << m_hitNr << ", readoutTime "
               << readoutTimestamp << ", m_stats.GetOldTriggerTimestamp("
               << (int)fecId << "): " << m_stats.GetOldTriggerTimestamp(fecId)
-              << std::endl;*/
+              << std::endl;
   }
 
   if (newData) {
@@ -173,13 +173,20 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
                 << m_pulseTime[1] << " " << tof << std::endl;
       tof = totalTime - m_pulseTime[2];
       thePulseTime = m_pulseTime[2];
+      if (tof < jitter) {
+        negPrevPrevTof++;
+        std::cout.precision(20);
+        std::cout << "no pulse time found, negative tof [ns]: " << tof
+                  << std::endl;
+        return true;
+      } else {
+        negPrevTof++;
+      }
+    } else {
+      negTof++;
     }
-    if (tof < jitter) {
-      std::cout.precision(20);
-      std::cout << "no pulse time found, negative tof [ns]: " << tof
-                << std::endl;
-      return true;
-    }
+  } else {
+    posTof++;
   }
 
   double bunchIntensity = 0;
@@ -372,8 +379,7 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
     // Add members of a cluster, if it is either the beginning of a cluster,
     // or if strip gap and time span is correct
     if (stripCount == 0 ||
-        (((plane == 2 && m_config.pAlgo == 5) ||
-          (std::fabs(strip1 - strip2) - 1 <=
+        (((std::fabs(strip1 - strip2) - 1 <=
            m_config.pMissingStripsCluster[m_config.pDets[dp.first]])) &&
          time1 - startTime <=
              m_config.pSpanClusterTime[m_config.pDets[dp.first]] &&
@@ -425,8 +431,7 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
     }
     // Stop clustering if gap between strips is too large or time span too
     // long
-    else if ((!(plane == 2 && m_config.pAlgo == 5) &&
-              (std::fabs(strip1 - strip2) - 1 >
+    else if (((std::fabs(strip1 - strip2) - 1 >
                m_config.pMissingStripsCluster[m_config.pDets[dp.first]])) ||
              time1 - startTime >
                  m_config.pSpanClusterTime[m_config.pDets[dp.first]] ||
@@ -452,12 +457,11 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
           centerOfGravity2_ovTh = (centerOfGravity2_ovTh / totalADC2_ovTh);
           centerOfTime2_ovTh = (centerOfTime2_ovTh / totalADC2_ovTh);
         }
-        if (m_config.pShowStats) {
-          m_stats.SetStatsPlane("DeltaTimeHits", dp, maxDeltaTime);
-          m_stats.SetStatsPlane("MissingStripsCluster", dp, maxMissingStrip);
-          m_stats.SetStatsPlane("SpanClusterTime", dp, spanCluster);
-          m_stats.SetStatsPlane("ClusterSize", dp, stripCount);
-        }
+
+        m_stats.SetStatsPlane("DeltaTimeHits", dp, maxDeltaTime);
+        m_stats.SetStatsPlane("MissingStripsCluster", dp, maxMissingStrip);
+        m_stats.SetStatsPlane("SpanClusterTime", dp, spanCluster);
+        m_stats.SetStatsPlane("ClusterSize", dp, stripCount);
 
         ClusterPlane clusterPlane;
         clusterPlane.pulse_time = pulseTime;
@@ -511,16 +515,14 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
         DTRACE(DEB, "Cluster id %d\n", m_cluster_id);
         clusterPlane.det = det;
         clusterPlane.plane = plane;
-        if (clusterPlane.bunch_intensity >= 1E+11 &&
-            clusterPlane.bunch_intensity <= 1E+12) {
+        if (m_config.pUseBunchFile == false ||
+            (clusterPlane.bunch_intensity >= 1E+11 &&
+             clusterPlane.bunch_intensity <= 1E+12)) {
           m_clusters_new[dp].emplace_back(std::move(clusterPlane));
         }
-        if (m_config.pShowStats) {
-          m_stats.SetStatsPlane("ClusterCntPlane", dp, 0);
-        }
+        m_stats.SetStatsPlane("ClusterCntPlane", dp, 0);
         clusterCount++;
       }
-
       // Clear vectors
       vADC.clear();
       vStrips.clear();
@@ -568,19 +570,21 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
     centerOfGravity2 = (centerOfGravity2 / totalADC2);
     centerOfTime2 = (centerOfTime2 / totalADC2);
 
-    // std::cout << "Type 1 cluster maxDeltaTime " << maxDeltaTime << ",
-    // strip_count " << stripCount << ", spanCluster " << spanCluster << ",
-    // largestTime " << largestTime << ", starttime " << startTime << std::endl;
+    /*std::cout << "Type 1 cluster maxDeltaTime " << maxDeltaTime
+              << ", strip_count " << stripCount << ",spanCluster "
+              << spanCluster << ",largestTime " << largestTime << ",starttime "
+              << startTime << std::endl;*/
 
-    if (m_config.pShowStats) {
-      m_stats.SetStatsPlane("DeltaTimeHits", dp, maxDeltaTime);
-      m_stats.SetStatsPlane("MissingStripsCluster", dp, maxMissingStrip);
-      m_stats.SetStatsPlane("SpanClusterTime", dp, spanCluster);
-      m_stats.SetStatsPlane("ClusterSize", dp, stripCount);
-    }
+    m_stats.SetStatsPlane("DeltaTimeHits", dp, maxDeltaTime);
+    m_stats.SetStatsPlane("MissingStripsCluster", dp, maxMissingStrip);
+    m_stats.SetStatsPlane("SpanClusterTime", dp, spanCluster);
+    m_stats.SetStatsPlane("ClusterSize", dp, stripCount);
+
     ClusterPlane clusterPlane;
     clusterPlane.pulse_time = pulseTime;
-    clusterPlane.bunch_intensity = m_config.pMapPulsetimeIntensity[pulseTime];
+    if (m_config.pUseBunchFile == true) {
+      clusterPlane.bunch_intensity = m_config.pMapPulsetimeIntensity[pulseTime];
+    }
     clusterPlane.size = stripCount;
     clusterPlane.adc = totalADC;
     clusterPlane.time = centerOfTime;
@@ -629,13 +633,14 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
 
     clusterPlane.det = det;
     clusterPlane.plane = plane;
-    if (clusterPlane.bunch_intensity >= 1E+11 &&
-        clusterPlane.bunch_intensity <= 1E+12) {
+
+    if (m_config.pUseBunchFile == false ||
+        (clusterPlane.bunch_intensity >= 1E+11 &&
+         clusterPlane.bunch_intensity <= 1E+12)) {
       m_clusters_new[dp].emplace_back(std::move(clusterPlane));
     }
-    if (m_config.pShowStats) {
-      m_stats.SetStatsPlane("ClusterCntPlane", dp, 0);
-    }
+    m_stats.SetStatsPlane("ClusterCntPlane", dp, 0);
+
     clusterCount++;
   }
 
@@ -859,23 +864,22 @@ int Clusterer::MatchClustersDetector(uint8_t det) {
             clusterDetector.time1_charge2 - clusterDetector.time0_charge2;
       }
 
-      if (m_config.pShowStats) {
-        m_stats.SetStatsDetector("DeltaTimePlanes_0_1", det,
-                                 std::fabs(clusterDetector.delta_plane_0_1));
+      m_stats.SetStatsDetector("DeltaTimePlanes_0_1", det,
+                               std::fabs(clusterDetector.delta_plane_0_1));
 
-        double ratio =
-            100 * (double)clusterDetector.adc0 / (double)clusterDetector.adc1;
-        if (ratio > 100.0) {
-          ratio =
-              100 * (double)clusterDetector.adc1 / (double)clusterDetector.adc0;
-          m_stats.SetStatsDetector("ChargeRatio_1_0", det, ratio);
-        } else {
-          m_stats.SetStatsDetector("ChargeRatio_0_1", det, ratio);
-        }
-
-        m_stats.SetStatsDetector("ClusterCntDetector", det, 0);
-        clusterCount++;
+      double ratio =
+          100 * (double)clusterDetector.adc0 / (double)clusterDetector.adc1;
+      if (ratio > 100.0) {
+        ratio =
+            100 * (double)clusterDetector.adc1 / (double)clusterDetector.adc0;
+        m_stats.SetStatsDetector("ChargeRatio_1_0", det, ratio);
+      } else {
+        m_stats.SetStatsDetector("ChargeRatio_0_1", det, ratio);
       }
+
+      m_stats.SetStatsDetector("ClusterCntDetector", det, 0);
+      clusterCount++;
+
       DTRACE(DEB, "\ncommon cluster det %d", (int)det);
       DTRACE(DEB, "\tpos x/pos y: %f/%f", clusterDetector.pos0,
              clusterDetector.pos1);
@@ -889,8 +893,9 @@ int Clusterer::MatchClustersDetector(uint8_t det) {
       DTRACE(DEB, "\tdelta time planes: %d\n",
              (int)clusterDetector.delta_plane_0_1);
 
-      if (clusterDetector.bunch_intensity >= 1E+11 &&
-          clusterDetector.bunch_intensity <= 1E+12) {
+      if (m_config.pUseBunchFile == false ||
+          (clusterDetector.bunch_intensity >= 1E+11 &&
+           clusterDetector.bunch_intensity <= 1E+12)) {
         m_clusters_detector[det].emplace_back(std::move(clusterDetector));
       }
     }
@@ -1178,16 +1183,22 @@ void Clusterer::FinishAnalysis() {
       m_stats.PrintClusterStats(m_config);
     }
     m_stats.PrintFECStats(m_config);
+    std::cout << "posTof " << posTof << std::endl;
+    std::cout << "negTof " << negTof << std::endl;
+    std::cout << "negPrevTof " << negPrevTof << std::endl;
+    std::cout << "negPrevPrevTof " << negPrevPrevTof << std::endl;
   }
 }
 
 void Clusterer::SaveDate(double the_seconds_start, std::string the_date_start,
                          double the_seconds_end, std::string the_date_end,
                          uint64_t num_triggers) {
-  std::cout << "\nXXXXXXXXXXXXXXXXXXXXXXXXXXX Date and time of first pcapng "
-               "packet XXXXXXXXXXXXXXXXXXXXXXXXXXX"
-            << std::endl;
-  std::cout << the_date_start << std::endl;
+  if (m_config.pShowStats) {
+    std::cout << "\nXXXXXXXXXXXXXXXXXXXXXXXXXXX Date and time of first pcapng "
+                 "packet XXXXXXXXXXXXXXXXXXXXXXXXXXX"
+              << std::endl;
+    std::cout << the_date_start << std::endl;
+  }
   m_rootFile->SaveDate(the_seconds_start, the_date_start, the_seconds_end,
                        the_date_end, num_triggers);
 }

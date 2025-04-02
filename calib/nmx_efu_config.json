@@ -1,0 +1,146 @@
+{
+  "Comment"  : "Budapest Measurements",
+  "Comment2" : "Full detector",
+  "Comment3" : "Tested at CERN with DMSC team",
+  "Date" : "2025 04 01 09:54",       
+  "Detector" : "NMX",
+  "InstrumentGeometry" : "NMX",
+  "MaxSpanX" : 64,
+  "MaxSpanY" : 64,
+  "MaxGapX" : 1,
+  "MaxGapY" : 1,
+  "SizeX" : 1280,
+  "SizeY" : 1280,
+  "DefaultMinADC" : 48,
+  "MaxClusteringTimeGap" : 500,
+  "MaxMatchingTimeGap" : 500,
+  "SplitMultiEvents" : false,
+  "Config" : [
+    {
+      "Ring": 0, "FEN": 0, "Hybrid": 4, "Plane": 0, "Offset":   0, "ReversedChannels": true, "Panel": 0,
+      "HybridId": "a0800072c8a8a0803410082006704410"
+    }, {
+      "Ring": 0, "FEN": 0, "Hybrid": 3, "Plane": 0, "Offset": 128, "ReversedChannels": true, "Panel": 0,
+      "HybridId": "a08000ed549ea0803410082006704410"
+    }, {
+      "Ring": 0, "FEN": 0, "Hybrid": 2, "Plane": 0, "Offset": 256, "ReversedChannels": true, "Panel": 0,
+      "HybridId": "a08000f7402ea0803410082006704410"
+    }, {
+      "Ring": 0, "FEN": 0, "Hybrid": 1, "Plane": 0, "Offset": 384, "ReversedChannels": true, "Panel": 0,
+      "HybridId": "a080007f2050a0803410082006704410"
+    }, {
+      "Ring": 0, "FEN": 0, "Hybrid": 0, "Plane": 0, "Offset": 512, "ReversedChannels": true, "Panel": 0,
+      "HybridId": "a080004128ada0803410082106704410"
+    }, {
+      "Ring": 0, "FEN": 1, "Hybrid": 0, "Plane": 1, "Offset":   0, "ReversedChannels": false, "Panel": 0,
+      "HybridId": "a08000500403a0803410082106704410"
+    }, {
+      "Ring": 0, "FEN": 1, "Hybrid": 1, "Plane": 1, "Offset": 128, "ReversedChannels": false, "Panel": 0,
+      "HybridId": "a080000208e3a0803410082106704410"
+    }, {
+      "Ring": 0, "FEN": 1, "Hybrid": 2, "Plane": 1, "Offset": 256, "ReversedChannels": false, "Panel": 0,
+      "HybridId": "a080006714a0a0803410082106704410"
+    }, {
+      "Ring": 0, "FEN": 1, "Hybrid": 3, "Plane": 1, "Offset": 384, "ReversedChannels": false, "Panel": 0,
+      "HybridId": "a08000513c67a0803410082006704410"
+    }, {
+      "Ring": 0, "FEN": 1, "Hybrid": 4, "Plane": 1, "Offset": 512, "ReversedChannels": false, "Panel": 0,
+      "HybridId": "a08000f6fccaa0803410082006704410"
+    },
+
+
+    {
+      "Ring": 1, "FEN": 0, "Hybrid": 4, "Plane": 0, "Offset":  640, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a0800081fcdba0803410082006704410"
+    },{
+      "Ring": 1, "FEN": 0, "Hybrid": 3, "Plane": 0, "Offset":  768, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a08000f20048a0803410082106704410"
+    }, {
+      "Ring": 1, "FEN": 0, "Hybrid": 2, "Plane": 0, "Offset": 896, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a08000094887a0803410082006704410"
+    }, {
+      "Ring": 1, "FEN": 0, "Hybrid": 1, "Plane": 0, "Offset": 1024, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a08000150475a0803410082106704410"
+    }, {
+      "Ring": 1, "FEN": 0, "Hybrid": 0, "Plane": 0, "Offset": 1152, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a08000deb48ea0803410082006704410"
+    }, {
+      "Ring": 1, "FEN": 1, "Hybrid": 4, "Plane": 1, "Offset":    0, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a08000d5fcc7a0803410082006704410"
+    }, {
+      "Ring": 1, "FEN": 1, "Hybrid": 3, "Plane": 1, "Offset":  128, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a080005f5066a0803410082006704410"
+    }, {
+      "Ring": 1, "FEN": 1, "Hybrid": 2, "Plane": 1, "Offset":  256, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a08000593485a0803410082006704410"
+    }, {
+      "Ring": 1, "FEN": 1, "Hybrid": 1, "Plane": 1, "Offset":  384, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a0800048b466a0803410082006704410"
+    }, {
+      "Ring": 1, "FEN": 1, "Hybrid": 0, "Plane": 1, "Offset":  512, "ReversedChannels": true, "Panel": 1,
+      "HybridId": "a0800043b4d0a0803410082006704410"
+    },    
+    {
+      "Ring": 2, "FEN": 0, "Hybrid": 0, "Plane": 0, "Offset":  0, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a08000b7fcd1a0803410082006704410"
+    },{
+      "Ring": 2, "FEN": 0, "Hybrid": 1, "Plane": 0, "Offset":  128, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a080006cc021a0803410082006704410"
+    }, {
+      "Ring": 2, "FEN": 0, "Hybrid": 2, "Plane": 0, "Offset": 256, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a080005754a0a0803410082006704410"
+    }, {
+      "Ring": 2, "FEN": 0, "Hybrid": 3, "Plane": 0, "Offset": 384, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a08000844c76a0803410082006704410"
+    }, {
+      "Ring": 2, "FEN": 0, "Hybrid": 4, "Plane": 0, "Offset": 512, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a08000b3bc7ba0803410082006704410"
+    }, {
+      "Ring": 2, "FEN": 1, "Hybrid": 0, "Plane": 1, "Offset":    640, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a08000362498a0803410082106704410"
+    }, {
+      "Ring": 2, "FEN": 1, "Hybrid": 1, "Plane": 1, "Offset":  768, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a08000ff24daa0803410082106704410"
+    }, {
+      "Ring": 2, "FEN": 1, "Hybrid": 2, "Plane": 1, "Offset":  896, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a08000910ca3a0803410082106704410"
+    }, {
+      "Ring": 2, "FEN": 1, "Hybrid": 3, "Plane": 1, "Offset":  1024, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a08000eac466a0803410082006704410"
+    }, {
+      "Ring": 2, "FEN": 1, "Hybrid": 4, "Plane": 1, "Offset":  1152, "ReversedChannels": false, "Panel": 2,
+      "HybridId": "a0800089b8daa0803410082006704410"
+    },
+     {
+      "Ring": 3, "FEN": 0, "Hybrid": 0, "Plane": 0, "Offset":  640, "ReversedChannels": false, "Panel": 3,
+      "HybridId": "a080009ec82aa0803410082106704410"
+    },{
+      "Ring": 3, "FEN": 0, "Hybrid": 1, "Plane": 0, "Offset":  768, "ReversedChannels": false, "Panel": 3,
+      "HybridId": "a080003db4c2a0803410082006704410"
+    }, {
+      "Ring": 3, "FEN": 0, "Hybrid": 2, "Plane": 0, "Offset": 896, "ReversedChannels": false, "Panel": 3,
+      "HybridId": "a08000aa3066a0803410082006704410"
+    }, {
+      "Ring": 3, "FEN": 0, "Hybrid": 3, "Plane": 0, "Offset": 1024, "ReversedChannels": false, "Panel": 3,
+      "HybridId": "a08000ce6416a0803410082106704410"
+    }, {
+      "Ring": 3, "FEN": 0, "Hybrid": 4, "Plane": 0, "Offset": 1152, "ReversedChannels": false, "Panel": 3,
+      "HybridId": "a080004c5881a0803410082006704410"
+    }, {
+      "Ring": 3, "FEN": 1, "Hybrid": 4, "Plane": 1, "Offset":    640, "ReversedChannels": true, "Panel": 3,
+      "HybridId": "a080008fc471a0803410082006704410"
+    }, {
+      "Ring": 3, "FEN": 1, "Hybrid": 3, "Plane": 1, "Offset":  768, "ReversedChannels": true, "Panel": 3,
+      "HybridId": "a08000ac0803a0803410082106704410"
+    }, {
+      "Ring": 3, "FEN": 1, "Hybrid": 2, "Plane": 1, "Offset":  896, "ReversedChannels": true, "Panel": 3,
+      "HybridId": "a08000fabcbaa0803410082006704410"
+    }, {
+      "Ring": 3, "FEN": 1, "Hybrid": 1, "Plane": 1, "Offset":  1024, "ReversedChannels": true, "Panel": 3,
+      "HybridId": "a08000bc4862a0803410082006704410"
+    }, {
+      "Ring": 3, "FEN": 1, "Hybrid": 0, "Plane": 1, "Offset":  1152, "ReversedChannels": true, "Panel": 3,
+      "HybridId": "a080009f60a2a0803410082106704410"
+    }
+  ]
+}

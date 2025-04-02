@@ -82,4 +82,10 @@ private:
   double m_pulseTime_prev;
   double m_pulseTime_prev_prev;
   RootFile *m_rootFile;
+  
+  long posTof = 0;
+  long negTof = 0;
+  long negPrevTof = 0;
+  long negPrevPrevTof = 0;
+  
 };

@@ -761,7 +761,9 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
                       "a geometry file loaded!",
                       nullptr);
   }
-  std::cout << "Analyzing " << pFileName << " ..." << std::endl;
+  if (pShowStats) {
+    std::cout << "Analyzing " << pFileName << " ..." << std::endl;
+  }
   pRootFilename = pFileName;
   if (pRootFilename.find(".h5") != std::string::npos) {
     pRootFilename.replace(pRootFilename.size() - 3, pRootFilename.size(), "");
@@ -1108,8 +1110,10 @@ bool Configuration::CreateMapping() {
   } else {
     pAxes.clear();
     std::ifstream t(pGeometryFile);
+
     std::string jsonstring((std::istreambuf_iterator<char>(t)),
                            std::istreambuf_iterator<char>());
+
     if (!t.good()) {
       return PrintUsage("Invalid JSON file format!", nullptr);
     }
@@ -1127,8 +1131,8 @@ bool Configuration::CreateMapping() {
         auto ring = geo["ring"].get<uint16_t>();
         auto vmm = geo["vmm"].get<uint8_t>();
         auto detector = geo["detector"].get<uint8_t>();
-        std::string labelDetector = geo["label_detector"].get<std::string>();
-        std::string labelPlane = geo["label_plane"].get<std::string>();
+        // std::string labelDetector = geo["label_detector"].get<std::string>();
+        // std::string labelPlane = geo["label_plane"].get<std::string>();
 
         auto strips0 = geo["id"];
         uint8_t plane = 0;
@@ -1136,7 +1140,7 @@ bool Configuration::CreateMapping() {
 
         if (strips0.size() != 64) {
           throw std::runtime_error(
-              "Wrong lengths of id0 or id1 arrays in geometry file.");
+              "Wrong lengths of id arrays in geometry file.");
         } else {
           plane = geo["plane"].get<uint8_t>();
           pIsPads[detector] = false;
@@ -1194,9 +1198,11 @@ bool Configuration::CreateMapping() {
         if (found == false) {
           pDetectorPlane_Fec.emplace(
               std::make_pair(std::make_pair(detector, plane), fec));
+          /*
           pDetectorPlane_Labels.emplace(
               std::make_pair(std::make_pair(detector, plane),
                              std::make_pair(labelDetector, labelPlane)));
+          */
         }
 
         // Search whether there is a new fec/chip combination
@@ -1213,13 +1219,15 @@ bool Configuration::CreateMapping() {
           // Add the new fec/chip pair to the list
           pFecChip_DetectorPlane.emplace(std::make_pair(
               std::make_pair(fec, vmm), std::make_pair(detector, plane)));
+          /*
           pFecChip_DetectorPlane_Labels.emplace(
               std::make_pair(std::make_pair(fec, vmm),
                              std::make_pair(labelDetector, labelPlane)));
+          */
         }
       }
     } catch (const std::exception &exc) {
-      throw std::runtime_error("Invalid json in geometry file.");
+      throw std::runtime_error("Invalid json while parsing geometry file.");
     }
   }
   // Dummy fec number for parser errors

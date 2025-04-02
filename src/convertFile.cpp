@@ -35,11 +35,10 @@ int main(int argc, char **argv) {
   timeStart = std::chrono::system_clock::now();
   uint64_t last_time = 0;
 
-  if (m_config.pShowStats) {
-    m_stats.CreateFECStats(m_config);
-    m_stats.CreateClusterStats(m_config);
-    m_stats.CreatePCAPStats(m_config);
-  }
+  m_stats.CreateFECStats(m_config);
+  m_stats.CreateClusterStats(m_config);
+  m_stats.CreatePCAPStats(m_config);
+
   if (m_config.pUseBunchFile == true) {
     bunchFile = TFile::Open(m_config.pBunchFile.c_str(), "READ");
     if (!bunchFile || bunchFile->IsZombie()) {
@@ -120,14 +119,12 @@ int main(int argc, char **argv) {
     }
     seqNumError = readoutParser.Stats.ErrorSeqNum;
 
-    if (m_config.pShowStats) {
-      pcappackets++;
-      if (ret != ReadoutParser::OK) {
-        badFrames++;
-        continue;
-      } else {
-        goodFrames++;
-      }
+    pcappackets++;
+    if (ret != ReadoutParser::OK) {
+      badFrames++;
+      continue;
+    } else {
+      goodFrames++;
     }
 
     double temp_pulseTime = 0;
@@ -450,61 +447,68 @@ int main(int argc, char **argv) {
   if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
     hit_size = 192;
   }
-
-  std::cout << "\n****************************************" << std::endl;
-  std::cout << "Stats (analysis):" << std::endl;
-  std::cout << "****************************************" << std::endl;
-  std::cout << "Analysis time: " << std::setprecision(1) << std::fixed
-            << elapsed_seconds << " ms" << std::endl;
-  std::cout << "Hit rate: " << std::scientific
-            << static_cast<double>(1000 * total_hits / elapsed_seconds)
-            << " hit/s" << std::endl;
-  std::cout << "Data rate: " << std::scientific
-            << static_cast<double>(1000 * total_hits * hit_size /
-                                   elapsed_seconds)
-            << " bit/s" << std::endl;
-  std::cout << "****************************************" << std::endl;
-  if (m_config.pUseBunchFile == true) {
-    std::cout
-        << m_stats.GetCounter("NumberOfBunches_1E7_1E8", STATISTIC_FEN)
-        << " bunches (between 1E+7 and 1E+8 protons), with total intensity of "
-        << std::fixed << std::setprecision(12)
-        << m_stats.GetCounter("IntensityOfBunches_1E7_1E8", STATISTIC_FEN)
-        << " protons" << std::endl;
-    std::cout
-        << m_stats.GetCounter("NumberOfBunches_1E8_1E9", STATISTIC_FEN)
-        << " bunches (between 1E+8 and 1E+9 protons), with total intensity of "
-        << std::fixed << std::setprecision(12)
-        << m_stats.GetCounter("IntensityOfBunches_1E8_1E9", STATISTIC_FEN)
-        << " protons" << std::endl;
-    std::cout
-        << m_stats.GetCounter("NumberOfBunches_1E9_1E10", STATISTIC_FEN)
-        << " bunches (between 1E+9 and 1E+10 protons), with total intensity of "
-        << std::fixed << std::setprecision(12)
-        << m_stats.GetCounter("IntensityOfBunches_1E9_1E10", STATISTIC_FEN)
-        << " protons" << std::endl;
-    std::cout << m_stats.GetCounter("NumberOfBunches_1E10_1E11", STATISTIC_FEN)
-              << " bunches (between 1E+10 and 1E+11 protons), with total "
-                 "intensity of "
-              << std::fixed << std::setprecision(12)
-              << m_stats.GetCounter("IntensityOfBunches_1E10_1E11",
-                                    STATISTIC_FEN)
-              << " protons" << std::endl;
-    std::cout << m_stats.GetCounter("NumberOfBunches_1E11_1E12", STATISTIC_FEN)
-              << " bunches (between 1E+11 and 1E+12 protons), with total "
-                 "intensity of "
-              << std::fixed << std::setprecision(12)
-              << m_stats.GetCounter("IntensityOfBunches_1E11_1E12",
-                                    STATISTIC_FEN)
-              << " protons" << std::endl;
-    std::cout << m_stats.GetCounter("NumberOfBunches_1E12_1E13", STATISTIC_FEN)
-              << " bunches (between 1E+12 and 1E+13 protons), with total "
-                 "intensity of "
-              << std::fixed << std::setprecision(12)
-              << m_stats.GetCounter("IntensityOfBunches_1E12_1E13",
-                                    STATISTIC_FEN)
-              << " protons" << std::endl;
+  if (m_config.pShowStats) {
+    std::cout << "\n****************************************" << std::endl;
+    std::cout << "Stats (analysis):" << std::endl;
     std::cout << "****************************************" << std::endl;
+    std::cout << "Analysis time: " << std::setprecision(1) << std::fixed
+              << elapsed_seconds << " ms" << std::endl;
+    std::cout << "Hit rate: " << std::scientific
+              << static_cast<double>(1000 * total_hits / elapsed_seconds)
+              << " hit/s" << std::endl;
+    std::cout << "Data rate: " << std::scientific
+              << static_cast<double>(1000 * total_hits * hit_size /
+                                     elapsed_seconds)
+              << " bit/s" << std::endl;
+    std::cout << "****************************************" << std::endl;
+    if (m_config.pUseBunchFile == true) {
+      std::cout << m_stats.GetCounter("NumberOfBunches_1E7_1E8", STATISTIC_FEN)
+                << " bunches (between 1E+7 and 1E+8 protons), with total "
+                   "intensity of "
+                << std::fixed << std::setprecision(12)
+                << m_stats.GetCounter("IntensityOfBunches_1E7_1E8",
+                                      STATISTIC_FEN)
+                << " protons" << std::endl;
+      std::cout << m_stats.GetCounter("NumberOfBunches_1E8_1E9", STATISTIC_FEN)
+                << " bunches (between 1E+8 and 1E+9 protons), with total "
+                   "intensity of "
+                << std::fixed << std::setprecision(12)
+                << m_stats.GetCounter("IntensityOfBunches_1E8_1E9",
+                                      STATISTIC_FEN)
+                << " protons" << std::endl;
+      std::cout << m_stats.GetCounter("NumberOfBunches_1E9_1E10", STATISTIC_FEN)
+                << " bunches (between 1E+9 and 1E+10 protons), with total "
+                   "intensity of "
+                << std::fixed << std::setprecision(12)
+                << m_stats.GetCounter("IntensityOfBunches_1E9_1E10",
+                                      STATISTIC_FEN)
+                << " protons" << std::endl;
+      std::cout << m_stats.GetCounter("NumberOfBunches_1E10_1E11",
+                                      STATISTIC_FEN)
+                << " bunches (between 1E+10 and 1E+11 protons), with total "
+                   "intensity of "
+                << std::fixed << std::setprecision(12)
+                << m_stats.GetCounter("IntensityOfBunches_1E10_1E11",
+                                      STATISTIC_FEN)
+                << " protons" << std::endl;
+      std::cout << m_stats.GetCounter("NumberOfBunches_1E11_1E12",
+                                      STATISTIC_FEN)
+                << " bunches (between 1E+11 and 1E+12 protons), with total "
+                   "intensity of "
+                << std::fixed << std::setprecision(12)
+                << m_stats.GetCounter("IntensityOfBunches_1E11_1E12",
+                                      STATISTIC_FEN)
+                << " protons" << std::endl;
+      std::cout << m_stats.GetCounter("NumberOfBunches_1E12_1E13",
+                                      STATISTIC_FEN)
+                << " bunches (between 1E+12 and 1E+13 protons), with total "
+                   "intensity of "
+                << std::fixed << std::setprecision(12)
+                << m_stats.GetCounter("IntensityOfBunches_1E12_1E13",
+                                      STATISTIC_FEN)
+                << " protons" << std::endl;
+      std::cout << "****************************************" << std::endl;
+    }
   }
   return 0;
 }
