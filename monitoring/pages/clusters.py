@@ -12,7 +12,26 @@ from config import *
 dash.register_page(__name__, path='/clusters', name="Clusters")
 
 layout = html.Div([
-	dcc.Checklist(id='log-y-toggle',options=[{'label': 'y-axis log', 'value': 'logy'}],value=[], labelStyle={'display': 'inline-block', 'margin-right': '10px'}),
+	#dcc.Checklist(id='log-y-toggle',options=[{'label': 'y-axis log', 'value': 'logy'}],value=[], labelStyle={'display': 'inline-block', 'margin-right': '10px'}),
+	html.Div([
+		html.Div([
+			dcc.Checklist(
+				id='logy_toggle',
+				options=[{'label': '1D plots: y-axis log', 'value': 'logy'}],
+				value=[],
+				labelStyle={'display': 'inline-block', 'margin-right': '10px'}
+			)
+		], style={'display': 'inline-block', 'margin-right': '20px'}),
+
+		html.Div([
+			dcc.Checklist(
+				id='logz_toggle',
+				options=[{'label': '2D plots: z-axis log', 'value': 'logz'}],
+				value=[],
+				labelStyle={'display': 'inline-block', 'margin-right': '10px'}
+			)
+		], style={'display': 'inline-block'})
+	], style={'textAlign': 'center', 'margin-bottom': '20px'}),
 	dcc.Graph(id='cluster_graph'),
 	dcc.Store(id='h_totals_clusters')
 ])
@@ -21,10 +40,11 @@ layout = html.Div([
 	Output('cluster_graph', 'figure'),
 	Output('h_totals_clusters', 'data'),
 	Input('cluster_data', 'data'),
-	State('h_totals_clusters', 'data'),
-	Input('log-y-toggle', 'value')
+	Input('logy_toggle', 'value'),
+	Input('logz_toggle', 'value'),
+	State('h_totals_clusters', 'data')
 )
-def plot_data(cluster_data, h_totals_clusters,log_axis_options):
+def plot_data(cluster_data,logy_toggle,logz_toggle, h_totals_clusters):
 	h_totals_clusters = h_totals_clusters or {}
 	if not cluster_data:
 		return dash.no_update, h_totals_clusters
@@ -34,7 +54,8 @@ def plot_data(cluster_data, h_totals_clusters,log_axis_options):
 	d2 = df_clusters.query("det == 2")
 	d3 = df_clusters.query("det == 3")
 
-	yaxis_type = 'log' if 'logy' in log_axis_options else 'linear'
+	yaxis_type = 'log' if 'logy' in logy_toggle else 'linear'
+	zaxis_type = 'log' if 'logz' in logz_toggle else 'linear'
 
 	if cluster_algorithm == "utpc":
 		pos0x = d0["pos0_utpc"]
@@ -84,12 +105,6 @@ def plot_data(cluster_data, h_totals_clusters,log_axis_options):
 	h2_total = np.array(h_totals_clusters.get("h2", [0]*channels_y))
 	h2_total += h2[0]
 	
-	h1_patched = np.where(h1[0] == 0, 0.1, h1[0])
-	h2_patched = np.where(h2[0] == 0, 0.1, h2[0])
-	h1_total_patched = np.where(h1_total == 0, 0.1, h1[0])
-	h2_total_patched = np.where(h2_total == 0, 0.1, h2[0])
-
-	
 	h3_0 = np.histogram(d0["adc0"]+d0["adc1"], bins = int(max_charge*charge_scale), range = [0.0, max_charge])
 	h3_0_total = np.array(h_totals_clusters.get("h3_0", [0]*int(max_charge*charge_scale)))
 	h3_0_total += h3_0[0]
@@ -108,6 +123,38 @@ def plot_data(cluster_data, h_totals_clusters,log_axis_options):
 	dtype=np.float64
 	)
 	h4_total += h4[0]
+	
+		
+	h1_patched = np.where(h1[0] == 0, 0.1, h1[0])
+	h2_patched = np.where(h2[0] == 0, 0.1, h2[0])
+	h4_patched = np.where(h4[0] == 0, 0.1, h4[0])
+	h1_total_patched = np.where(h1_total == 0, 0.1, h1_total)
+	h2_total_patched = np.where(h2_total == 0, 0.1, h2_total)
+	h4_total_patched = np.where(h4_total == 0, 0.1, h4_total)
+	
+	if zaxis_type == 'log':
+		h4_patched = np.log10(h4_patched)
+		h4_total_patched = np.log10(h4_total_patched)	
+	
+		min_val_41 = np.floor(h4_patched.min())
+		max_val_41 = np.ceil(h4_patched.max())
+		min_val_42 = np.floor(h4_total_patched.min())
+		max_val_42 = np.ceil(h4_total_patched.max())
+
+		tickvals_41 = np.arange(min_val_41, max_val_41 + 1)
+		ticktext_41 = [f"10^{int(v)}" for v in tickvals_41]
+		tickvals_42 = np.arange(min_val_42, max_val_42 + 1)
+		ticktext_42 = [f"10^{int(v)}" for v in tickvals_42]		
+		colorbar_41 = dict(title='counts',tickvals=tickvals_41,ticktext=ticktext_41,x=1.0,y=0.79,len=0.49,thickness=20)
+		colorbar_42 = dict(title='counts',tickvals=tickvals_42,ticktext=ticktext_42,x=1.0,y=0.24,len=0.49,thickness=20)
+
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), colorbar=colorbar_41,colorscale='hot'), row = 1, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched), colorbar=colorbar_42,colorscale='hot'), row = 2, col = 4)	
+	else:
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), colorbar=dict(title="Counts",x=1.0,y=0.79,len=0.49,thickness=20),colorscale='hot'), row = 1, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched), colorbar=dict(title="Counts",x=1.0,y=0.24,len=0.49,thickness=20),colorscale='hot'), row = 2, col = 4)	
+
+
 		
 	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_patched,  name="x",marker_color = color_x), row = 1, col = 1)
 	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_patched,  name="y",marker_color = color_y), row = 1, col = 2)
@@ -115,7 +162,6 @@ def plot_data(cluster_data, h_totals_clusters,log_axis_options):
 	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1[0], name="q1",marker_color = color_xy1), row = 1, col = 3)
 	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2[0], name="q2",marker_color = color_xy2), row = 1, col = 3)
 	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3[0], name="q3",marker_color = color_xy3), row = 1, col = 3)
-	fig.add_trace(go.Heatmap(z = np.transpose(h4[0]), colorbar=dict(title="Counts",x=1.0,y=0.79,len=0.49,thickness=20),colorscale='hot'), row = 1, col = 4)
 
 	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_total_patched,  name="x",marker_color = color_x), row = 2, col = 1)
 	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_total_patched,  name="y",marker_color = color_y), row = 2, col = 2)
@@ -123,7 +169,6 @@ def plot_data(cluster_data, h_totals_clusters,log_axis_options):
 	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1_total, name="q1",marker_color = color_xy1), row = 2, col = 3)
 	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2_total, name="q2",marker_color = color_xy2), row = 2, col = 3)
 	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3_total, name="q3",marker_color = color_xy3), row = 2, col = 3)
-	fig.add_trace(go.Heatmap(z = np.transpose(h4_total), colorbar=dict(title="Counts",x=1.0,y=0.24,len=0.49,thickness=20),colorscale='hot'), row = 2, col = 4)	
 	
 	fig.update_xaxes(title_text=("x [pitch 0.4 mm]"), row = 1, col = 1)
 	fig.update_yaxes(type=yaxis_type,title_text=("counts"), row = 1, col = 1)
