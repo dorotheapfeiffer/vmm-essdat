@@ -5,6 +5,7 @@ import os
 import config as cfg
 from timeit import default_timer as timer
 from dash_app import create_dash_app, register_callbacks
+from waitress import serve 
 
 def run_dash_app():
 	app = create_dash_app()
@@ -12,7 +13,10 @@ def run_dash_app():
 	print("\n🔍 Dash registered callbacks:")
 	for output in app.callback_map:
 		print(" -", output)
-	app.run(debug=False, port=8050)
+	#app.run(debug=False, port=8050)
+	# Use waitress instead of Dash's dev server
+	serve(app.server, host='0.0.0.0', port=8050)
+
 
 
 def store_data():
@@ -63,7 +67,13 @@ if __name__ == "__main__":
 		p3.join()
 	except KeyboardInterrupt:
 		print("\nCaught Ctrl+C! Cleaning up...")
+		p1.terminate()
+		p2.terminate()
+		p3.terminate()
 	finally:
+		p1.join()
+		p2.join()
+		p3.join()
 		fileList = glob.glob("./" + cfg.file_filter + "*.root", recursive=True)
 		for file in fileList:
 			try:

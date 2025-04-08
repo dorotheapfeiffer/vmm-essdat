@@ -1,5 +1,7 @@
 import os
 import glob
+from datetime import datetime
+import re
 
 
 #########################
@@ -82,3 +84,34 @@ def get_oldest_file(file_list):
 	if len(file_list) < 2:
 		return None
 	return min(file_list, key=os.path.getmtime)
+
+
+def cleanup_old_root_files(root_dir, max_files=10):
+	# Get all .root files with full paths
+	root_files = [os.path.join(root_dir, f) for f in os.listdir(root_dir) if f.endswith(".root")]
+	#root_files = [os.path.join(root_dir, f) for f in os.listdir(root_dir) if f.endswith(".root") and os.path.isfile(os.path.join(root_dir, f))]
+	#print(root_files)
+	if len(root_files) <= max_files:
+		return  # Nothing to clean up
+
+	# Sort by filename timestamp (reuse your existing function)
+	sorted_files = sorted(root_files, key=extract_timestamp_from_filename)
+
+	# Files to delete
+	files_to_delete = sorted_files[:-max_files]  # keep the newest `max_files`
+
+	for f in files_to_delete:
+		try:
+			os.remove(f)
+			print(f"🗑️ Deleted old file: {f}")
+		except Exception as e:
+			print(f"⚠️ Could not delete {f}: {e}")
+
+
+
+def extract_timestamp_from_filename(file):
+	match = re.search(r"_(\d{14})_", file)
+	if match:
+		return datetime.strptime(match.group(1), "%Y%m%d%H%M%S")
+	else:
+		return datetime.max  # push malformed names to the end
