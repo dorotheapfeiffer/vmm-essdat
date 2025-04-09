@@ -65,7 +65,14 @@ the_width=3000
 time_points=50
 ##########################
 
-
+shared_data = {
+	"hit_data": [],
+	"plane_data": [],
+	"cluster_data": [],
+	"hit_updated_at": 0.0,
+	"plane_updated_at": 0.0,
+	"cluster_updated_at": 0.0
+}
 
 def count_files(extension, name_filter):
     # Find all .txt files

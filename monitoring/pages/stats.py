@@ -8,6 +8,9 @@ import numpy as np
 from config import *
 from timeit import default_timer as timer
 
+last_seen_cluster_timestamp = 0.0
+last_seen_plane_timestamp = 0.0
+
 dash.register_page(__name__, path='/stats', name="Statistics")
 
 layout = html.Div([
@@ -23,11 +26,15 @@ layout = html.Div([
 	State('h_totals_stats', 'data')
 )
 def plot_data(plane_data,cluster_data, h_totals_stats):
+	global last_seen_plane_timestamp
+	global last_seen_cluster_timestamp
 	h_totals_stats = h_totals_stats or {}
-	if not plane_data:
+	cl_updated_at = shared_data.get("cluster_updated_at", 0.0)
+	pl_updated_at = shared_data.get("plane_updated_at", 0.0)
+	if not cluster_data or cl_updated_at == last_seen_cluster_timestamp or not plane_data or pl_updated_at == last_seen_plane_timestamp:
 		return dash.no_update, h_totals_stats
-	if not cluster_data:
-		return dash.no_update, h_totals_stats
+	last_seen_plane_timestamp = pl_updated_at
+	last_seen_cluster_timestamp = cl_updated_at
 	df_plane = pd.DataFrame(plane_data)
 	p00 = df_plane.query("plane == 0 and det == 0")
 	p10 = df_plane.query("plane == 1 and det == 0")

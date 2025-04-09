@@ -7,7 +7,7 @@ import plotly.io as pio
 import numpy as np
 from config import *
 
-
+last_seen_cluster_timestamp = 0.0
 
 dash.register_page(__name__, path='/clusters', name="Clusters")
 
@@ -45,9 +45,12 @@ layout = html.Div([
 	State('h_totals_clusters', 'data')
 )
 def plot_data(cluster_data,logy_toggle,logz_toggle, h_totals_clusters):
+	global last_seen_cluster_timestamp
 	h_totals_clusters = h_totals_clusters or {}
-	if not cluster_data:
+	updated_at = shared_data.get("cluster_updated_at", 0.0)
+	if not cluster_data or updated_at == last_seen_cluster_timestamp:
 		return dash.no_update, h_totals_clusters
+	last_seen_cluster_timestamp = updated_at
 	df_clusters = pd.DataFrame(cluster_data) 
 	d0 = df_clusters.query("det == 0")
 	d1 = df_clusters.query("det == 1")

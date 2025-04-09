@@ -1,0 +1,14 @@
+ROOT file ./monitoring_00000_20250409131251_monitoring.root created!
+ROOT file ./monitoring_00000_20250409131252_monitoring.root created!
+ROOT file ./monitoring_00000_20250409131254_monitoring.root created!
+ROOT file ./monitoring_00000_20250409131255_monitoring.root created!
+ROOT file ./monitoring_00000_20250409131257_monitoring.root created!
+ROOT file ./monitoring_00000_20250409131258_monitoring.root created!
+
+Caught Ctrl+C! Cleaning up...
+End of program!
+ROOT file ./monitoring_00000_20250409131556_monitoring.root created!
+ROOT file ./monitoring_00000_20250409131558_monitoring.root created!
+
+Caught Ctrl+C! Cleaning up...
+End of program!
