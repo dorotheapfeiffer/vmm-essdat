@@ -4,6 +4,8 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
+import plotly.express as px
+import plotly.colors as pc
 import numpy as np
 from config import *
 from timeit import default_timer as timer
@@ -14,18 +16,48 @@ last_seen_plane_timestamp = 0.0
 dash.register_page(__name__, path='/stats', name="Statistics")
 
 layout = html.Div([
+	html.Div([
+		html.Div([
+			# Log y-axis
+			dcc.Checklist(
+				id='logy_toggle',
+				options=[{'label': '1D plots: y-axis log', 'value': 'logy'}],
+				value=[],
+				labelStyle={'display': 'inline-block', 'margin-right': '10px'}
+			),
+			html.Label("Color palette:", style={"margin-left": "20px", "margin-right": "2px"}),
+			# Color palette dropdown
+			dcc.Dropdown(
+				id="color_palette",
+				options=color_options,
+				value="Config",
+				clearable=False,
+				style={"width": "200px", "margin-left": "5px", "verticalAlign": "middle"}
+			),
+			html.Div(id="color_preview", style={"display": "inline-block", "margin-left": "5px", "margin-right": "20px"}),
+			], style={
+			"display": "flex",
+			"alignItems": "center",  # vertically align
+			"justifyContent": "center",
+			"margin-bottom": "20px"
+		})
+	]),
 	dcc.Graph(id='statistics_graph'),
 	dcc.Store(id='h_totals_stats')
 ])
 
+
+	
 @dash.callback(
 	Output('statistics_graph', 'figure'),
 	Output('h_totals_stats', 'data'),
 	Input('plane_data', 'data'),
 	Input('cluster_data', 'data'),
+	Input('logy_toggle', 'value'),
+	Input("color_palette", "value"),
 	State('h_totals_stats', 'data')
 )
-def plot_data(plane_data,cluster_data, h_totals_stats):
+def plot_data(plane_data,cluster_data, logy_toggle, color_palette, h_totals_stats):
 	global last_seen_plane_timestamp
 	global last_seen_cluster_timestamp
 	h_totals_stats = h_totals_stats or {}
@@ -33,6 +65,13 @@ def plot_data(plane_data,cluster_data, h_totals_stats):
 	pl_updated_at = shared_data.get("plane_updated_at", 0.0)
 	if not cluster_data or cl_updated_at == last_seen_cluster_timestamp or not plane_data or pl_updated_at == last_seen_plane_timestamp:
 		return dash.no_update, h_totals_stats
+	
+	if color_palette == "Config":
+		colors = color_config
+	else:
+		colors = palette_map.get(color_palette, px.colors.qualitative.Plotly)
+	yaxis_type = 'log' if 'logy' in logy_toggle else 'linear'
+		
 	last_seen_plane_timestamp = pl_updated_at
 	last_seen_cluster_timestamp = cl_updated_at
 	df_plane = pd.DataFrame(plane_data)
@@ -50,6 +89,8 @@ def plot_data(plane_data,cluster_data, h_totals_stats):
 	d1 = df_clusters.query("det == 1")
 	d2 = df_clusters.query("det == 2")
 	d3 = df_clusters.query("det == 3")
+	
+	yaxis_type = 'log' if 'logy' in logy_toggle else 'linear'
 	
 	now_time = timer()
 	h_start_time = np.array(h_totals_stats.get("h_start_time", [0]*1))
@@ -305,125 +346,108 @@ def plot_data(plane_data,cluster_data, h_totals_stats):
 		paper_bgcolor='white'
 	)
 
-	fig.add_trace(go.Bar(x = h1_0[1][:-1], y = h1_0_total, name='x q0', marker_color = color_x0), row = 1, col = 1)
-	fig.add_trace(go.Bar(x = h1_1[1][:-1], y = h1_1_total, name='x q1', marker_color = color_x1), row = 1, col = 1)
-	fig.add_trace(go.Bar(x = h1_2[1][:-1], y = h1_2_total, name='x q2', marker_color = color_x2), row = 1, col = 1)
-	fig.add_trace(go.Bar(x = h1_3[1][:-1], y = h1_3_total, name='x q3', marker_color = color_x3), row = 1, col = 1)
+	fig.add_trace(go.Bar(x = h1_0[1][:-1], y = h1_0_total, name='x q0', marker_color = colors[0]), row = 1, col = 1)
+	fig.add_trace(go.Bar(x = h1_1[1][:-1], y = h1_1_total, name='x q1', marker_color = colors[1]), row = 1, col = 1)
+	fig.add_trace(go.Bar(x = h1_2[1][:-1], y = h1_2_total, name='x q2', marker_color = colors[2]), row = 1, col = 1)
+	fig.add_trace(go.Bar(x = h1_3[1][:-1], y = h1_3_total, name='x q3', marker_color = colors[3]), row = 1, col = 1)
 	
 	#fig.add_trace(go.Scatter(x=x_step_1,y=y_step_1_0,mode='lines',line=dict(shape='hv', color=color_x0, width=2)), row=1, col=1)
 	#fig.add_trace(go.Scatter(x=x_step_1,y=y_step_1_1,mode='lines',line=dict(shape='hv', color=color_x1, width=2)), row=1, col=1)
 	#fig.add_trace(go.Scatter(x=x_step_1,y=y_step_1_2,mode='lines',line=dict(shape='hv', color=color_x2, width=2)), row=1, col=1)
 	#fig.add_trace(go.Scatter(x=x_step_1,y=y_step_1_3,mode='lines',line=dict(shape='hv', color=color_x3, width=2)), row=1, col=1)
 	
-	fig.add_trace(go.Bar(x = h2_0[1][:-1], y = h2_0_total, name='y q0', marker_color = color_y0), row = 1, col = 2)
-	fig.add_trace(go.Bar(x = h2_1[1][:-1], y = h2_1_total, name='y q1', marker_color = color_y1), row = 1, col = 2)
-	fig.add_trace(go.Bar(x = h2_2[1][:-1], y = h2_2_total, name='y q2', marker_color = color_y2), row = 1, col = 2)
-	fig.add_trace(go.Bar(x = h2_3[1][:-1], y = h2_3_total, name='y q3', marker_color = color_y3), row = 1, col = 2)
+	fig.add_trace(go.Bar(x = h2_0[1][:-1], y = h2_0_total, name='y q0', marker_color = colors[4]), row = 1, col = 2)
+	fig.add_trace(go.Bar(x = h2_1[1][:-1], y = h2_1_total, name='y q1', marker_color = colors[5]), row = 1, col = 2)
+	fig.add_trace(go.Bar(x = h2_2[1][:-1], y = h2_2_total, name='y q2', marker_color = colors[6]), row = 1, col = 2)
+	fig.add_trace(go.Bar(x = h2_3[1][:-1], y = h2_3_total, name='y q3', marker_color = colors[7%len(colors)]), row = 1, col = 2)
 	
-	fig.add_trace(go.Bar(x = h3_0[1][:-1], y = h3_0_total, name='q0', marker_color = color_xy0), row = 1, col = 3)
-	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1_total, name='q1', marker_color = color_xy1), row = 1, col = 3)
-	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2_total, name='q2', marker_color = color_xy2), row = 1, col = 3)
-	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3_total, name='q3', marker_color = color_xy3), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h3_0[1][:-1], y = h3_0_total, name='q0', marker_color = colors[8%len(colors)]), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1_total, name='q1', marker_color = colors[9%len(colors)]), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2_total, name='q2', marker_color = colors[10%len(colors)]), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3_total, name='q3', marker_color = colors[11%len(colors)]), row = 1, col = 3)
 	
-	fig.add_trace(go.Bar(x = h4_0[1][:-1], y = h4_0_total, name='q0', marker_color = color_xy0), row = 1, col = 4)
-	fig.add_trace(go.Bar(x = h4_1[1][:-1], y = h4_1_total, name='q1',marker_color = color_xy1), row = 1, col = 4)
-	fig.add_trace(go.Bar(x = h4_2[1][:-1], y = h4_2_total, name='q2',marker_color = color_xy2), row = 1, col = 4)
-	fig.add_trace(go.Bar(x = h4_3[1][:-1], y = h4_3_total, name='q3',marker_color = color_xy3), row = 1, col = 4)
+	fig.add_trace(go.Bar(x = h4_0[1][:-1], y = h4_0_total, name='q0', marker_color = colors[8%len(colors)]), row = 1, col = 4)
+	fig.add_trace(go.Bar(x = h4_1[1][:-1], y = h4_1_total, name='q1',marker_color = colors[9%len(colors)]), row = 1, col = 4)
+	fig.add_trace(go.Bar(x = h4_2[1][:-1], y = h4_2_total, name='q2',marker_color = colors[10%len(colors)]), row = 1, col = 4)
+	fig.add_trace(go.Bar(x = h4_3[1][:-1], y = h4_3_total, name='q3',marker_color = colors[11%len(colors)]), row = 1, col = 4)
 	
-	fig.add_trace(go.Bar(x = h5_0[1][:-1], y = h5_0_total,  name='x q0',marker_color = color_x0), row = 2, col = 1)
-	fig.add_trace(go.Bar(x = h5_1[1][:-1], y = h5_1_total,  name='x q1',marker_color = color_x1), row = 2, col = 1)
-	fig.add_trace(go.Bar(x = h2_2[1][:-1], y = h5_2_total,  name='x q2',marker_color = color_x2), row = 2, col = 1)
-	fig.add_trace(go.Bar(x = h2_3[1][:-1], y = h5_3_total,  name='x q3',marker_color = color_x3), row = 2, col = 1)
+	fig.add_trace(go.Bar(x = h5_0[1][:-1], y = h5_0_total,  name='x q0',marker_color = colors[0]), row = 2, col = 1)
+	fig.add_trace(go.Bar(x = h5_1[1][:-1], y = h5_1_total,  name='x q1',marker_color = colors[1]), row = 2, col = 1)
+	fig.add_trace(go.Bar(x = h2_2[1][:-1], y = h5_2_total,  name='x q2',marker_color = colors[2]), row = 2, col = 1)
+	fig.add_trace(go.Bar(x = h2_3[1][:-1], y = h5_3_total,  name='x q3',marker_color = colors[3]), row = 2, col = 1)
 	
-	fig.add_trace(go.Bar(x = h6_0[1][:-1], y = h6_0_total,  name='y q0',marker_color = color_y0), row = 2, col = 2)
-	fig.add_trace(go.Bar(x = h6_1[1][:-1], y = h6_1_total,  name='y q1',marker_color = color_y1), row = 2, col = 2)
-	fig.add_trace(go.Bar(x = h6_2[1][:-1], y = h6_2_total,  name='y q2',marker_color = color_y2), row = 2, col = 2)
-	fig.add_trace(go.Bar(x = h6_3[1][:-1], y = h6_3_total,  name='y q3',marker_color = color_y3), row = 2, col = 2)
+	fig.add_trace(go.Bar(x = h6_0[1][:-1], y = h6_0_total,  name='y q0',marker_color = colors[4]), row = 2, col = 2)
+	fig.add_trace(go.Bar(x = h6_1[1][:-1], y = h6_1_total,  name='y q1',marker_color = colors[5]), row = 2, col = 2)
+	fig.add_trace(go.Bar(x = h6_2[1][:-1], y = h6_2_total,  name='y q2',marker_color = colors[6]), row = 2, col = 2)
+	fig.add_trace(go.Bar(x = h6_3[1][:-1], y = h6_3_total,  name='y q3',marker_color = colors[7%len(colors)]), row = 2, col = 2)
 	
-	fig.add_trace(go.Bar(x = h7_0[1][:-1], y = h7_0_total,  name='x q0',marker_color = color_x0), row = 2, col = 3)
-	fig.add_trace(go.Bar(x = h7_1[1][:-1], y = h7_1_total,  name='x q1',marker_color = color_x1), row = 2, col = 3)
-	fig.add_trace(go.Bar(x = h7_2[1][:-1], y = h7_2_total,  name='x q2',marker_color = color_x2), row = 2, col = 3)
-	fig.add_trace(go.Bar(x = h7_3[1][:-1], y = h7_3_total,  name='x q3',marker_color = color_x3), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h7_0[1][:-1], y = h7_0_total,  name='x q0',marker_color = colors[0]), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h7_1[1][:-1], y = h7_1_total,  name='x q1',marker_color = colors[1]), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h7_2[1][:-1], y = h7_2_total,  name='x q2',marker_color = colors[2]), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h7_3[1][:-1], y = h7_3_total,  name='x q3',marker_color = colors[3]), row = 2, col = 3)
 	
-	fig.add_trace(go.Bar(x = h8_0[1][:-1], y = h8_0_total,  name='y q3',marker_color = color_y0), row = 2, col = 4)
-	fig.add_trace(go.Bar(x = h8_1[1][:-1], y = h8_1_total,  name='y q3',marker_color = color_y1), row = 2, col = 4)
-	fig.add_trace(go.Bar(x = h8_2[1][:-1], y = h8_2_total,  name='y q3',marker_color = color_y2), row = 2, col = 4)
-	fig.add_trace(go.Bar(x = h8_3[1][:-1], y = h8_3_total,  name='y q3',marker_color = color_y3), row = 2, col = 4)
+	fig.add_trace(go.Bar(x = h8_0[1][:-1], y = h8_0_total,  name='y q3',marker_color = colors[4]), row = 2, col = 4)
+	fig.add_trace(go.Bar(x = h8_1[1][:-1], y = h8_1_total,  name='y q3',marker_color = colors[5]), row = 2, col = 4)
+	fig.add_trace(go.Bar(x = h8_2[1][:-1], y = h8_2_total,  name='y q3',marker_color = colors[6]), row = 2, col = 4)
+	fig.add_trace(go.Bar(x = h8_3[1][:-1], y = h8_3_total,  name='y q3',marker_color = colors[7%len(colors)]), row = 2, col = 4)
 	
-	fig.add_trace(go.Bar(x = h9_0[1][:-1], y = h9_0_total,  name='x q0',marker_color = color_x0), row = 3, col = 1)
-	fig.add_trace(go.Bar(x = h9_1[1][:-1], y = h9_1_total,  name='x q1',marker_color = color_x1), row = 3, col = 1)
-	fig.add_trace(go.Bar(x = h9_2[1][:-1], y = h9_2_total,  name='x q2',marker_color = color_x2), row = 3, col = 1)
-	fig.add_trace(go.Bar(x = h9_3[1][:-1], y = h9_3_total,  name='x q3',marker_color = color_x3), row = 3, col = 1)
+	fig.add_trace(go.Bar(x = h9_0[1][:-1], y = h9_0_total,  name='x q0',marker_color = colors[0]), row = 3, col = 1)
+	fig.add_trace(go.Bar(x = h9_1[1][:-1], y = h9_1_total,  name='x q1',marker_color = colors[1]), row = 3, col = 1)
+	fig.add_trace(go.Bar(x = h9_2[1][:-1], y = h9_2_total,  name='x q2',marker_color = colors[2]), row = 3, col = 1)
+	fig.add_trace(go.Bar(x = h9_3[1][:-1], y = h9_3_total,  name='x q3',marker_color = colors[3]), row = 3, col = 1)
 	
-	fig.add_trace(go.Bar(x = h10_0[1][:-1], y = h10_0_total,  name='y q0',marker_color = color_y0), row = 3, col = 2)
-	fig.add_trace(go.Bar(x = h10_1[1][:-1], y = h10_1_total,  name='y q1',marker_color = color_y1), row = 3, col = 2)
-	fig.add_trace(go.Bar(x = h10_2[1][:-1], y = h10_2_total,  name='y q2',marker_color = color_y2), row = 3, col = 2)
-	fig.add_trace(go.Bar(x = h10_3[1][:-1], y = h10_3_total,  name='y q3',marker_color = color_y3), row = 3, col = 2)
+	fig.add_trace(go.Bar(x = h10_0[1][:-1], y = h10_0_total,  name='y q0',marker_color = colors[4]), row = 3, col = 2)
+	fig.add_trace(go.Bar(x = h10_1[1][:-1], y = h10_1_total,  name='y q1',marker_color = colors[5]), row = 3, col = 2)
+	fig.add_trace(go.Bar(x = h10_2[1][:-1], y = h10_2_total,  name='y q2',marker_color = colors[6]), row = 3, col = 2)
+	fig.add_trace(go.Bar(x = h10_3[1][:-1], y = h10_3_total,  name='y q3',marker_color = colors[7%len(colors)]), row = 3, col = 2)
 	
 						
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_00_total, name='x q0', mode='markers', marker=dict(symbol='circle',size=16,color=color_x0)), row = 3, col = 3)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_01_total, name='x q1', mode='markers', marker=dict(symbol='circle',size=16,color=color_x1)), row = 3, col = 3)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_02_total, name='x q2', mode='markers', marker=dict(symbol='circle',size=16,color=color_x2)), row = 3, col = 3)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_03_total, name='x q3', mode='markers', marker=dict(symbol='circle',size=16,color=color_x3)), row = 3, col = 3)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_10_total, name='y q0', mode='markers', marker=dict(symbol='circle',size=16,color=color_y0)), row = 3, col = 3)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_11_total, name='y q1', mode='markers', marker=dict(symbol='circle',size=16,color=color_y1)), row = 3, col = 3)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_12_total, name='y q2', mode='markers', marker=dict(symbol='circle',size=16,color=color_y2)), row = 3, col = 3)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h11_13_total, name='y q3', mode='markers', marker=dict(symbol='circle',size=16,color=color_y3)), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_00_total, name='x q0', mode='markers', marker=dict(symbol='circle',size=16,color=colors[0])), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_01_total, name='x q1', mode='markers', marker=dict(symbol='circle',size=16,color=colors[1])), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_02_total, name='x q2', mode='markers', marker=dict(symbol='circle',size=16,color=colors[2])), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_03_total, name='x q3', mode='markers', marker=dict(symbol='circle',size=16,color=colors[3])), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_10_total, name='y q0', mode='markers', marker=dict(symbol='circle',size=16,color=colors[4])), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_11_total, name='y q1', mode='markers', marker=dict(symbol='circle',size=16,color=colors[5])), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_12_total, name='y q2', mode='markers', marker=dict(symbol='circle',size=16,color=colors[6])), row = 3, col = 3)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h11_13_total, name='y q3', mode='markers', marker=dict(symbol='circle',size=16,color=colors[7%len(colors)])), row = 3, col = 3)
 	
-	fig.add_trace(go.Scatter( x = h_time_total, y = h12_0_total, name='q0', mode='markers', marker=dict(symbol='circle',size=16,color=color_xy0)), row = 3, col = 4)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h12_1_total, name='q1', mode='markers', marker=dict(symbol='circle',size=16,color=color_xy1)), row = 3, col = 4)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h12_2_total, name='q2', mode='markers', marker=dict(symbol='circle',size=16,color=color_xy2)), row = 3, col = 4)
-	fig.add_trace(go.Scatter( x = h_time_total, y = h12_3_total, name='q3', mode='markers', marker=dict(symbol='circle',size=16,color=color_xy3)), row = 3, col = 4)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h12_0_total, name='q0', mode='markers', marker=dict(symbol='circle',size=16,color=colors[8%len(colors)])), row = 3, col = 4)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h12_1_total, name='q1', mode='markers', marker=dict(symbol='circle',size=16,color=colors[9%len(colors)])), row = 3, col = 4)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h12_2_total, name='q2', mode='markers', marker=dict(symbol='circle',size=16,color=colors[10%len(colors)])), row = 3, col = 4)
+	fig.add_trace(go.Scatter( x = h_time_total, y = h12_3_total, name='q3', mode='markers', marker=dict(symbol='circle',size=16,color=colors[11%len(colors)])), row = 3, col = 4)
 
 
 	fig.update_xaxes(title_text="size [strips]", row = 1, col = 1)
-	fig.update_yaxes(title_text="counts", row = 1, col = 1)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 1, col = 1)
 	fig.update_xaxes(title_text="size [strips]", row = 1, col = 2)
-	fig.update_yaxes(title_text="counts", row = 1, col = 2)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 1, col = 2)
 	fig.update_xaxes(title_text="size [strips]", row = 1, col = 3)
-	fig.update_yaxes(title_text="counts", row = 1, col = 3)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 1, col = 3)
 	
 
 	fig.update_xaxes(title_text="time difference [ns]", row = 1, col = 4)
-	fig.update_yaxes(title_text="counts", row = 1, col = 4)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 1, col = 4)
 	fig.update_xaxes(title_text="missing [strips]", row = 2, col = 1)
-	fig.update_yaxes(title_text="counts", row = 2, col = 1)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 2, col = 1)
 	fig.update_xaxes(title_text="missing [strips]", row = 2, col = 2)
-	fig.update_yaxes(title_text="counts", row = 2, col = 2)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 2, col = 2)
 
 	fig.update_xaxes(title_text="time difference [ns]", row = 2, col = 3)
-	fig.update_yaxes(title_text="counts", row = 2, col = 3)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 2, col = 3)
 	fig.update_xaxes(title_text="time difference [ns]", row = 2, col = 4)
-	fig.update_yaxes(title_text="counts", row = 2, col = 4)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 2, col = 4)
 	
 	fig.update_xaxes(title_text="time span [ns]", row = 3, col = 1)
-	fig.update_yaxes(title_text="counts", row = 3, col = 1)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 3, col = 1)
 	fig.update_xaxes(title_text="time span [ns]", row = 3, col = 2)
-	fig.update_yaxes(title_text="counts", row = 3, col = 2)
+	fig.update_yaxes(type=yaxis_type,title_text="counts", row = 3, col = 2)
 	fig.update_xaxes(title_text="time since start of run [s]", row = 3, col = 3)
-	fig.update_yaxes(title_text="percentage [%]", row = 3, col = 3)
+	fig.update_yaxes(type=yaxis_type,title_text="percentage [%]", row = 3, col = 3)
 
 	fig.update_xaxes(title_text="time since start of run [s]", row = 3, col = 4)
-	fig.update_yaxes(title_text="rate [kHz]", row = 3, col = 4)	
+	fig.update_yaxes(type=yaxis_type,title_text="rate [kHz]", row = 3, col = 4)	
 	
-	#fig.update_xaxes(title_text="size [strips]", row = 1, col = 1)
-	#fig.update_yaxes(title_text="counts", row = 1, col = 1)
-	#fig.update_xaxes(title_text="time [ns]", row = 1, col = 2)
-	#fig.update_yaxes(title_text="counts", row = 1, col = 2)
-	#fig.update_xaxes(title_text="strips", row = 1, col = 3)
-	#fig.update_yaxes(title_text="counts", row = 1, col = 3)
-	#fig.update_xaxes(title_text="time [ns]", row = 2, col = 1)
-	#fig.update_yaxes(title_text="counts", row = 2, col = 1)
-	#fig.update_xaxes(title_text="time [ns]", row = 2, col = 2)
-	#fig.update_yaxes(title_text="counts", row = 2, col = 2)
-	#fig.update_xaxes(title_text="time since start of acq [s]", row = 2, col = 3)
-	#fig.update_yaxes(title_text="[%]", row = 2, col = 3)
-	
-	
-	
-	fig.update_traces(opacity=1.0)
-	fig.update_layout(height = the_height, width = the_width, showlegend = False)
-	fig.update_layout(barmode='stack',uirevision='constant')
+	fig.update_layout(yaxis=dict(type=yaxis_type), barmode='stack',uirevision='constant', height = the_height, width = the_width, showlegend = False)
 	return fig, {
 		"h1_0_total": h1_0_total.tolist(),
 		"h1_1_total": h1_1_total.tolist(),

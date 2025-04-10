@@ -1,8 +1,9 @@
 import os
 import glob
+from dash import dcc, html
 from datetime import datetime
 import re
-
+import plotly.express as px
 
 #########################
 acquire_pcapng=0
@@ -40,17 +41,14 @@ bins_missing_strip=4
 bins_span=20
 bins_max_delta_hits=20
 bins_delta_plane=50
-color_x = 'blue'
 color_x0 = '#1f77b4'
 color_x1 = '#17becf'
 color_x2 = '#9467bd'
 color_x3 = '#2ca02c'
-color_y ='red'
 color_y0 ='#d62728'
 color_y1 ='#ff7f0e'
 color_y2 ='#6D071A'
 color_y3 ='#e377c2'
-color_xy = 'purple'
 color_xy0 = '#000000'
 color_xy1 = '#800000'
 color_xy2 = '#808080'
@@ -59,11 +57,12 @@ color_xy3 = '#c0c0c0'
 #color_xy1 = '#8f8f8f'
 #color_xy2 = '#555500'
 #color_xy3 = '#8c564b'
-color_rate = 'red'
 the_height=1200
 the_width=3000
 time_points=50
 ##########################
+
+color_config = [color_x0,color_x1,color_x2, color_x3,color_y0,color_y1,color_y2,color_y3,color_xy0,color_xy1,color_xy2,color_xy3 ]
 
 shared_data = {
 	"hit_data": [],
@@ -74,6 +73,58 @@ shared_data = {
 	"cluster_updated_at": 0.0
 }
 
+
+palette_map = {
+	"Plotly": px.colors.qualitative.Plotly,
+	"D3": px.colors.qualitative.D3,
+	"Set1": px.colors.qualitative.Set1,
+	"Pastel": px.colors.qualitative.Pastel,
+	"Dark2": px.colors.qualitative.Dark2,
+	"Bold": px.colors.qualitative.Bold,
+	"Safe": px.colors.qualitative.Safe,
+	"Vivid": px.colors.qualitative.Vivid,
+	"Alphabet": px.colors.qualitative.Alphabet,
+	"Antique": px.colors.qualitative.Antique
+}
+
+color_options=[
+	{"label": "Config", "value": "Config"},
+	{"label": "Plotly", "value": "Plotly"},
+	{"label": "D3", "value": "D3"},
+	{"label": "Set1", "value": "Set1"},
+	{"label": "Pastel", "value": "Pastel"},
+	{"label": "Dark2", "value": "Dark2"},
+	{"label": "Bold", "value": "Bold"},
+	{"label": "Safe", "value": "Safe"},
+	{"label": "Vivid", "value": "Vivid"},
+	{"label": "Alphabet", "value": "Alphabet"},
+	{"label": "Antique", "value": "Antique"}]
+
+def get_gradient_style(colors):
+	"""Build CSS gradient style from list of colors."""
+	return {
+		'background': f'linear-gradient(to right, {", ".join(colors)})',
+		'height': '15px',
+		'borderRadius': '5px',
+		'margin': '5px 0'
+	}
+
+def get_colorscale_options():
+	sequential = px.colors.sequential
+	palette_names = [name for name in dir(sequential) if not name.startswith("_") and isinstance(getattr(sequential, name), list)]
+	
+	options = []
+	for name in palette_names:
+		colors = getattr(sequential, name)
+		options.append({
+			'label': html.Div([
+				html.Div(style=get_gradient_style(colors)),
+				html.Div(name, style={'fontSize': '12px', 'marginTop': '2px'})
+			]),
+			'value': name
+		})
+	return options
+	
 def count_files(extension, name_filter):
     # Find all .txt files
 	file_list = glob.glob(os.path.join(".", extension))
@@ -110,9 +161,9 @@ def cleanup_old_root_files(root_dir, max_files=10):
 	for f in files_to_delete:
 		try:
 			os.remove(f)
-			print(f"🗑️ Deleted old file: {f}")
+			print(f"Deleted old file: {f}")
 		except Exception as e:
-			print(f"⚠️ Could not delete {f}: {e}")
+			print(f"Could not delete {f}: {e}")
 
 
 

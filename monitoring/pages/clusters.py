@@ -4,6 +4,8 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
+import plotly.express as px
+import plotly.colors as pc
 import numpy as np
 from config import *
 
@@ -12,29 +14,52 @@ last_seen_cluster_timestamp = 0.0
 dash.register_page(__name__, path='/clusters', name="Clusters")
 
 layout = html.Div([
-	#dcc.Checklist(id='log-y-toggle',options=[{'label': 'y-axis log', 'value': 'logy'}],value=[], labelStyle={'display': 'inline-block', 'margin-right': '10px'}),
 	html.Div([
 		html.Div([
+			# Log y-axis
 			dcc.Checklist(
 				id='logy_toggle',
 				options=[{'label': '1D plots: y-axis log', 'value': 'logy'}],
 				value=[],
 				labelStyle={'display': 'inline-block', 'margin-right': '10px'}
-			)
-		], style={'display': 'inline-block', 'margin-right': '20px'}),
-
-		html.Div([
+			),
+			
+			# Log z-axis
 			dcc.Checklist(
 				id='logz_toggle',
 				options=[{'label': '2D plots: z-axis log', 'value': 'logz'}],
 				value=[],
 				labelStyle={'display': 'inline-block', 'margin-right': '10px'}
+			),
+			html.Label("Color palette:", style={"margin-left": "20px", "margin-right": "2px"}),
+			# Color palette dropdown
+			dcc.Dropdown(
+				id="color_palette",
+				options=color_options,
+				value="Config",
+				clearable=False,
+				style={"width": "120px", "margin-left": "5px", "margin-right": "20px", "verticalAlign": "middle"}
+			),
+			html.Div(id="color_preview", style={"display": "inline-block", "margin-left": "5px", "margin-right": "20px"}),
+			html.Label("Color map 2D:"),
+			dcc.Dropdown(
+				id="heatmap_color",
+				options=get_colorscale_options(),
+				value="Hot",
+				style={"width": "200px", "margin-left": "5px", "verticalAlign": "middle"}
 			)
-		], style={'display': 'inline-block'})
-	], style={'textAlign': 'center', 'margin-bottom': '20px'}),
+			], style={
+			"display": "flex",
+			"alignItems": "center",  # vertically align
+			"justifyContent": "center",
+			"margin-bottom": "20px"
+		})
+	]),
 	dcc.Graph(id='cluster_graph'),
 	dcc.Store(id='h_totals_clusters')
 ])
+
+
 
 @dash.callback(
 	Output('cluster_graph', 'figure'),
@@ -42,9 +67,11 @@ layout = html.Div([
 	Input('cluster_data', 'data'),
 	Input('logy_toggle', 'value'),
 	Input('logz_toggle', 'value'),
+	Input("color_palette", "value"),
+	Input("heatmap_color", "value"),
 	State('h_totals_clusters', 'data')
 )
-def plot_data(cluster_data,logy_toggle,logz_toggle, h_totals_clusters):
+def plot_data(cluster_data,logy_toggle,logz_toggle, color_palette, heatmap_color, h_totals_clusters):
 	global last_seen_cluster_timestamp
 	h_totals_clusters = h_totals_clusters or {}
 	updated_at = shared_data.get("cluster_updated_at", 0.0)
@@ -57,6 +84,10 @@ def plot_data(cluster_data,logy_toggle,logz_toggle, h_totals_clusters):
 	d2 = df_clusters.query("det == 2")
 	d3 = df_clusters.query("det == 3")
 
+	if color_palette == "Config":
+		colors = color_config
+	else:
+		colors = palette_map.get(color_palette, px.colors.qualitative.Plotly)
 	yaxis_type = 'log' if 'logy' in logy_toggle else 'linear'
 	zaxis_type = 'log' if 'logz' in logz_toggle else 'linear'
 
@@ -151,27 +182,27 @@ def plot_data(cluster_data,logy_toggle,logz_toggle, h_totals_clusters):
 		colorbar_41 = dict(title='counts',tickvals=tickvals_41,ticktext=ticktext_41,x=1.0,y=0.79,len=0.49,thickness=20)
 		colorbar_42 = dict(title='counts',tickvals=tickvals_42,ticktext=ticktext_42,x=1.0,y=0.24,len=0.49,thickness=20)
 
-		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), colorbar=colorbar_41,colorscale='hot'), row = 1, col = 4)
-		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched), colorbar=colorbar_42,colorscale='hot'), row = 2, col = 4)	
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), colorbar=colorbar_41,colorscale=heatmap_color), row = 1, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched), colorbar=colorbar_42,colorscale=heatmap_color), row = 2, col = 4)	
 	else:
-		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), colorbar=dict(title="Counts",x=1.0,y=0.79,len=0.49,thickness=20),colorscale='hot'), row = 1, col = 4)
-		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched), colorbar=dict(title="Counts",x=1.0,y=0.24,len=0.49,thickness=20),colorscale='hot'), row = 2, col = 4)	
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), colorbar=dict(title="Counts",x=1.0,y=0.79,len=0.49,thickness=20),colorscale=heatmap_color), row = 1, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched), colorbar=dict(title="Counts",x=1.0,y=0.24,len=0.49,thickness=20),colorscale=heatmap_color), row = 2, col = 4)	
 
 
 		
-	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_patched,  name="x",marker_color = color_x), row = 1, col = 1)
-	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_patched,  name="y",marker_color = color_y), row = 1, col = 2)
-	fig.add_trace(go.Bar(x = h3_0[1][:-1], y = h3_0[0], name="q0", marker_color = color_xy0), row = 1, col = 3)
-	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1[0], name="q1",marker_color = color_xy1), row = 1, col = 3)
-	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2[0], name="q2",marker_color = color_xy2), row = 1, col = 3)
-	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3[0], name="q3",marker_color = color_xy3), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_patched,  name="x",marker_color = colors[0]), row = 1, col = 1)
+	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_patched,  name="y",marker_color = colors[4]), row = 1, col = 2)
+	fig.add_trace(go.Bar(x = h3_0[1][:-1], y = h3_0[0], name="q0", marker_color = colors[8%len(colors)]), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1[0], name="q1",marker_color = colors[9%len(colors)]), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2[0], name="q2",marker_color = colors[10%len(colors)]), row = 1, col = 3)
+	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3[0], name="q3",marker_color = colors[11%len(colors)]), row = 1, col = 3)
 
-	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_total_patched,  name="x",marker_color = color_x), row = 2, col = 1)
-	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_total_patched,  name="y",marker_color = color_y), row = 2, col = 2)
-	fig.add_trace(go.Bar(x = h3_0[1][:-1], y = h3_0_total, name="q0", marker_color = color_xy0), row = 2, col = 3)
-	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1_total, name="q1",marker_color = color_xy1), row = 2, col = 3)
-	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2_total, name="q2",marker_color = color_xy2), row = 2, col = 3)
-	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3_total, name="q3",marker_color = color_xy3), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_total_patched,  name="x",marker_color = colors[0]), row = 2, col = 1)
+	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_total_patched,  name="y",marker_color = colors[4]), row = 2, col = 2)
+	fig.add_trace(go.Bar(x = h3_0[1][:-1], y = h3_0_total, name="q0", marker_color = colors[8%len(colors)]), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h3_1[1][:-1], y = h3_1_total, name="q1",marker_color = colors[9%len(colors)]), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h3_2[1][:-1], y = h3_2_total, name="q2",marker_color = colors[10%len(colors)]), row = 2, col = 3)
+	fig.add_trace(go.Bar(x = h3_3[1][:-1], y = h3_3_total, name="q3",marker_color = colors[11%len(colors)]), row = 2, col = 3)
 	
 	fig.update_xaxes(title_text=("x [pitch 0.4 mm]"), row = 1, col = 1)
 	fig.update_yaxes(type=yaxis_type,title_text=("counts"), row = 1, col = 1)

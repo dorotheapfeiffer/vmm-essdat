@@ -4,36 +4,76 @@ import pandas as pd
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
+import plotly.express as px
+import plotly.colors as pc
 import numpy as np
 from config import *
 
 dash.register_page(__name__, path='/hits', name="Hits")
 
+
 layout = html.Div([
 	html.Div([
 		html.Div([
+			# Log y-axis
 			dcc.Checklist(
 				id='logy_toggle',
 				options=[{'label': '1D plots: y-axis log', 'value': 'logy'}],
 				value=[],
 				labelStyle={'display': 'inline-block', 'margin-right': '10px'}
-			)
-		], style={'display': 'inline-block', 'margin-right': '20px'}),
-
-		html.Div([
+			),
+			
+			# Log z-axis
 			dcc.Checklist(
 				id='logz_toggle',
 				options=[{'label': '2D plots: z-axis log', 'value': 'logz'}],
 				value=[],
 				labelStyle={'display': 'inline-block', 'margin-right': '10px'}
+			),
+			html.Label("Color palette:", style={"margin-left": "20px", "margin-right": "2px"}),
+			# Color palette dropdown
+			dcc.Dropdown(
+				id="color_palette",
+				options=color_options,
+				value="Config",
+				clearable=False,
+				style={"width": "120px", "margin-left": "5px",  "margin-right": "5px", "verticalAlign": "middle"}
+			),
+			html.Div(id="color_preview", style={"display": "inline-block", "margin-left": "5px", "margin-right": "20px"}),
+			html.Label("Color map 2D:"),
+			dcc.Dropdown(
+				id="heatmap_color",
+				options=get_colorscale_options(),
+				value="Jet",
+				style={"width": "200px", "margin-left": "5px", "verticalAlign": "middle"}
 			)
-		], style={'display': 'inline-block'})
-	], style={'textAlign': 'center', 'margin-bottom': '20px'}),
+		], style={
+			"display": "flex",
+			"alignItems": "center",  # vertically align
+			"justifyContent": "center",
+			"margin-bottom": "20px"
+		}),
+		
+	]),
 	dcc.Graph(id='hit_graph'),
 	dcc.Store(id='h_totals_hits')
 ])
 
-
+@dash.callback(
+	Output("color_preview", "children"),
+	Input("color_palette", "value")
+)
+def update_preview(color_palette):
+	if color_palette == "Config":
+		colors = color_config
+	else:
+		colors = getattr(pc.qualitative, color_palette)
+	return html.Div(
+		[html.Div(style={
+			"width": "15px", "height": "15px", "backgroundColor": c,
+			"display": "inline-block", "marginRight": "3px", "border": "1px solid #ccc"
+		}) for c in colors]
+	)
 
 @dash.callback(
 	Output('hit_graph', 'figure'),
@@ -41,9 +81,11 @@ layout = html.Div([
 	Input('hit_data', 'data'),
 	Input('logy_toggle', 'value'),
 	Input('logz_toggle', 'value'),
+	Input("color_palette", "value"),
+	Input("heatmap_color", "value"),
 	State('h_totals_hits', 'data'),
 )
-def plot_data(hit_data,logy_toggle, logz_toggle,  h_totals_hits):
+def plot_data(hit_data,logy_toggle, logz_toggle, color_palette, heatmap_color, h_totals_hits):
 	h_totals_hits = h_totals_hits or {}
 	if not hit_data:
 		return dash.no_update, h_totals_hits
@@ -52,6 +94,10 @@ def plot_data(hit_data,logy_toggle, logz_toggle,  h_totals_hits):
 	hits1 = df_hits.query("plane == 1 and (det >= 0 and det <=3)")
 	fig = make_subplots(rows = 2, cols = 4, horizontal_spacing=0.06, vertical_spacing=0.1, subplot_titles = ("hits pos0", "hits pos1", "hits adc0", "hits adc1", "total hits pos0", "total hits pos1", "total hits adc0", "total hits adc1"))
 
+	if color_palette == "Config":
+		colors = color_config
+	else:
+		colors = palette_map.get(color_palette, px.colors.qualitative.Plotly)
 	yaxis_type = 'log' if 'logy' in logy_toggle else 'linear'
 	zaxis_type = 'log' if 'logz' in logz_toggle else 'linear'
 
@@ -114,21 +160,21 @@ def plot_data(hit_data,logy_toggle, logz_toggle,  h_totals_hits):
 		colorbar_32 = dict(title='counts',tickvals=tickvals_32,ticktext=ticktext_32,x=0.736,y=0.24,len=0.49,thickness=20)
 		colorbar_42 = dict(title='counts',tickvals=tickvals_42,ticktext=ticktext_42,x=1.0,y=0.24,len=0.49,thickness=20)
 
-		fig.add_trace(go.Heatmap(z = np.transpose(h3_patched), y=h3[2][:-1],colorbar=colorbar_31,colorscale='jet'), row = 1, col = 3)
-		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), y=h4[2][:-1],colorbar=colorbar_41,colorscale='jet'), row = 1, col = 4)
-		fig.add_trace(go.Heatmap(z = np.transpose(h3_total_patched),y=h3[2][:-1],colorbar=colorbar_32,colorscale='jet'), row = 2, col = 3)
-		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched),y=h4[2][:-1], colorbar=colorbar_42,colorscale='jet'), row = 2, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h3_patched), y=h3[2][:-1],colorbar=colorbar_31,colorscale=heatmap_color), row = 1, col = 3)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_patched), y=h4[2][:-1],colorbar=colorbar_41,colorscale=heatmap_color), row = 1, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h3_total_patched),y=h3[2][:-1],colorbar=colorbar_32,colorscale=heatmap_color), row = 2, col = 3)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_total_patched),y=h4[2][:-1], colorbar=colorbar_42,colorscale=heatmap_color), row = 2, col = 4)
 	else:
-		fig.add_trace(go.Heatmap(z = np.transpose(h3[0]), y=h3[2][:-1],colorbar=dict(title="Counts",x=0.736,y=0.79,len=0.49,thickness=20),colorscale='jet'), row = 1, col = 3)
-		fig.add_trace(go.Heatmap(z = np.transpose(h4[0]),y=h4[2][:-1], colorbar=dict(title="Counts",x=1.0,y=0.79,len=0.49,thickness=20),colorscale='jet'), row = 1, col = 4)
-		fig.add_trace(go.Heatmap(z = np.transpose(h3_total),y=h3[2][:-1],colorbar=dict(title="Counts",x=0.736,y=0.24,len=0.49,thickness=20),colorscale='jet'), row = 2, col = 3)
-		fig.add_trace(go.Heatmap(z = np.transpose(h4_total), y=h4[2][:-1],colorbar=dict(title="Counts",x=1.0,y=0.24,len=0.49,thickness=20),colorscale='jet'), row = 2, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h3[0]), y=h3[2][:-1],colorbar=dict(title="Counts",x=0.736,y=0.79,len=0.49,thickness=20),colorscale=heatmap_color), row = 1, col = 3)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4[0]),y=h4[2][:-1], colorbar=dict(title="Counts",x=1.0,y=0.79,len=0.49,thickness=20),colorscale=heatmap_color), row = 1, col = 4)
+		fig.add_trace(go.Heatmap(z = np.transpose(h3_total),y=h3[2][:-1],colorbar=dict(title="Counts",x=0.736,y=0.24,len=0.49,thickness=20),colorscale=heatmap_color), row = 2, col = 3)
+		fig.add_trace(go.Heatmap(z = np.transpose(h4_total), y=h4[2][:-1],colorbar=dict(title="Counts",x=1.0,y=0.24,len=0.49,thickness=20),colorscale=heatmap_color), row = 2, col = 4)
 
-	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_patched, marker_color = color_x), row = 1, col = 1)
-	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_patched, marker_color = color_y), row = 1, col = 2)
+	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_patched, marker_color = colors[0]), row = 1, col = 1)
+	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_patched, marker_color = colors[4]), row = 1, col = 2)
 
-	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_total_patched, marker_color = color_x), row = 2, col = 1)
-	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_total_patched, marker_color = color_y), row = 2, col = 2)
+	fig.add_trace(go.Bar(x = h1[1][:-1], y = h1_total_patched, marker_color = colors[0]), row = 2, col = 1)
+	fig.add_trace(go.Bar(x = h2[1][:-1], y = h2_total_patched, marker_color = colors[4]), row = 2, col = 2)
 
 
 	fig.update_xaxes(title_text=("x [pitch 0.4 mm]"), row = 1, col = 1)

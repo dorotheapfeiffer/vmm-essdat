@@ -21,6 +21,7 @@ def create_dash_app():
 
 
 def register_callbacks(app):
+
 	#print("DASH register_callbacks")		
 	@app.callback(
 		Output('hit_data', 'data'),
