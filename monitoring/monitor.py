@@ -6,6 +6,7 @@ import config as cfg
 from timeit import default_timer as timer
 from dash_app import create_dash_app, register_callbacks
 from waitress import serve 
+import time as t
 
 def run_dash_app():
 	app = create_dash_app()
@@ -24,8 +25,8 @@ def store_data():
 	if cfg.acquire_pcapng>0:
 		while True:
 			fileId = cnt%cfg.number_of_files
-			name = cfg.file_name + "_" + f"{fileId:05}" + ".pcapng"
-			args = ["dumpcap", "-w", name, "-a", "filesize:" + str(filesize), "-i", interface]
+			name = cfg.file_filter + "_" + f"{fileId:05}" + ".pcapng"
+			args = ["dumpcap", "-w", name, "-a", "filesize:" + str(cfg.file_size), "-i", cfg.interface]
 			subprocess.call(args)
 			print("Wrote (" + str(cnt) + "): " + name +  "\n")
 			cnt = cnt + 1

@@ -89,7 +89,9 @@ def plot_data(plane_data,cluster_data, logy_toggle, color_palette, h_totals_stat
 	d1 = df_clusters.query("det == 1")
 	d2 = df_clusters.query("det == 2")
 	d3 = df_clusters.query("det == 3")
-	
+	if d0.size == 0 and d1.size == 0 and d2.size == 0 and d3.size == 0:
+		return dash.no_update, h_totals_stats
+		
 	yaxis_type = 'log' if 'logy' in logy_toggle else 'linear'
 	
 	now_time = timer()
@@ -101,243 +103,264 @@ def plot_data(plane_data,cluster_data, logy_toggle, color_palette, h_totals_stat
 	h_time_total = np.roll(h_time_total, -1)
 	h_time_total[-1] =now_time-h_start_time[0]
 
-
-	# size 0
-	h1_0 = np.histogram(d0["size0"], bins = bins_size, range = [0.0, bins_size])
 	h1_0_total = np.array(h_totals_stats.get("h1_0_total", [0]*bins_size))
-	h1_0_total = h1_0_total + h1_0[0]
-	#x_step_1 = np.repeat(h1_0[1][:-1], 2)[1:-1]
-	#y_step_1_0 = np.repeat(h1_0_total, 2)
-	
-	
-	h1_1 = np.histogram(d1["size0"], bins = bins_size, range = [0.0, bins_size])
-	h1_1_total = np.array(h_totals_stats.get("h1_1_total", [0]*bins_size))
-	h1_1_total = h1_1_total + h1_1[0]
-	#y_step_1_1 = np.repeat(h1_1_total, 2)
-	
-	h1_2 = np.histogram(d2["size0"], bins = bins_size, range = [0.0, bins_size])
-	h1_2_total = np.array(h_totals_stats.get("h1_2_total", [0]*bins_size))
-	h1_2_total = h1_2_total + h1_1[0]
-	#y_step_1_2 = np.repeat(h1_2_total, 2)
-	
-	h1_3 = np.histogram(d3["size0"], bins = bins_size, range = [0.0, bins_size])
-	h1_3_total = np.array(h_totals_stats.get("h1_3_total", [0]*bins_size))
-	h1_3_total = h1_3_total + h1_3[0]
-	#y_step_1_3 = np.repeat(h1_3_total, 2)
-	
-	
-	# size 1
-	h2_0 = np.histogram(d0["size1"], bins = bins_size, range = [0.0, bins_size])
 	h2_0_total = np.array(h_totals_stats.get("h2_0_total", [0]*bins_size))
-	h2_0_total = h2_0_total + h2_0[0]
-	
-	h2_1 = np.histogram(d1["size1"], bins = bins_size, range = [0.0, bins_size])
-	h2_1_total = np.array(h_totals_stats.get("h2_1_total", [0]*bins_size))
-	h2_1_total = h2_1_total + h2_1[0]
-	
-	h2_2 = np.histogram(d2["size1"], bins = bins_size, range = [0.0, bins_size])
-	h2_2_total = np.array(h_totals_stats.get("h2_2_total", [0]*bins_size))
-	h2_2_total = h2_2_total + h2_1[0]
-	
-	h2_3 = np.histogram(d3["size1"], bins = bins_size, range = [0.0, bins_size])
-	h2_3_total = np.array(h_totals_stats.get("h2_3_total", [0]*bins_size))
-	h2_3_total = h2_3_total + h2_3[0]
-	
-	
-	# size 0 + size 1
-	h3_0 = np.histogram(d0["size0"]+d0["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
 	h3_0_total = np.array(h_totals_stats.get("h3_0_total", [0]*2*bins_size))
-	h3_0_total = h3_0_total + h3_0[0]
-
-	h3_1 = np.histogram(d1["size0"]+d1["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
-	h3_1_total = np.array(h_totals_stats.get("h3_1_total", [0]*2*bins_size))
-	h3_1_total = h3_1_total + h3_1[0]
-	
-	h3_2 = np.histogram(d2["size0"]+d2["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
-	h3_2_total = np.array(h_totals_stats.get("h3_2_total", [0]*2*bins_size))
-	h3_2_total = h3_2_total + h3_2[0]
-	
-	h3_3 = np.histogram(d3["size0"]+d3["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
-	h3_3_total = np.array(h_totals_stats.get("h3_3_total", [0]*2*bins_size))
-	h3_3_total = h3_3_total + h3_3[0]
-	
-	
-	# delta time plane
-	h4_0 = np.histogram(d0["time1"] - d0["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
 	h4_0_total = np.array(h_totals_stats.get("h4_0_total", [0]*bins_delta_plane))
-	h4_0_total = h4_0_total + h4_0[0]
-	
-	h4_1 = np.histogram(d1["time1"] - d1["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
-	h4_1_total = np.array(h_totals_stats.get("h4_1_total", [0]*bins_delta_plane))
-	h4_1_total = h4_1_total + h4_1[0]
-	
-	h4_2 = np.histogram(d2["time1"] - d2["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
-	h4_2_total = np.array(h_totals_stats.get("h4_2_total", [0]*bins_delta_plane))
-	h4_2_total = h4_2_total + h4_2[0]
-	
-	h4_3 = np.histogram(d3["time1"] - d3["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
-	h4_3_total = np.array(h_totals_stats.get("h4_3_total", [0]*bins_delta_plane))
-	h4_3_total = h4_3_total + h4_3[0]
-	
-	
-	# max missing strip 0
-	h5_0 = np.histogram(d0["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
 	h5_0_total = np.array(h_totals_stats.get("h5_0_total", [0]*bins_missing_strip))
-	h5_0_total = h5_0_total + h5_0[0]
-	
-	h5_1 = np.histogram(d1["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
-	h5_1_total = np.array(h_totals_stats.get("h5_1_total", [0]*bins_missing_strip))
-	h5_1_total = h5_1_total + h5_0[0]
-	
-	h5_2 = np.histogram(d2["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
-	h5_2_total = np.array(h_totals_stats.get("h5_2_total", [0]*bins_missing_strip))
-	h5_2_total = h5_2_total + h5_0[0]
-	
-	h5_3 = np.histogram(d3["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
-	h5_3_total = np.array(h_totals_stats.get("h5_3_total", [0]*bins_missing_strip))
-	h5_3_total = h5_3_total + h5_3[0]			
-	
-	
-	# max missing strio 1
-	h6_0 = np.histogram(d0["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
 	h6_0_total = np.array(h_totals_stats.get("h6_0_total", [0]*bins_missing_strip))
-	h6_0_total = h6_0_total + h6_0[0]
-	
-	h6_1 = np.histogram(d1["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
-	h6_1_total = np.array(h_totals_stats.get("h6_1_total", [0]*bins_missing_strip))
-	h6_1_total = h6_1_total + h6_1[0]
-	
-	h6_2 = np.histogram(d2["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
-	h6_2_total = np.array(h_totals_stats.get("h6_2_total", [0]*bins_missing_strip))
-	h6_2_total = h6_2_total + h6_2[0]
-	
-	h6_3 = np.histogram(d3["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
-	h6_3_total = np.array(h_totals_stats.get("h6_3_total", [0]*bins_missing_strip))
-	h6_3_total = h6_3_total + h6_3[0]
-	
-	
-	# max delta time 0
-	h7_0 = np.histogram(d0["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
 	h7_0_total = np.array(h_totals_stats.get("h7_0_total", [0]*bins_max_delta_hits))
-	h7_0_total = h7_0_total + h7_0[0]
-	
-	h7_1 = np.histogram(d1["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
-	h7_1_total = np.array(h_totals_stats.get("h7_1_total", [0]*bins_max_delta_hits))
-	h7_1_total = h7_1_total + h7_1[0]	
-	
-	h7_2 = np.histogram(d2["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
-	h7_2_total = np.array(h_totals_stats.get("h7_2_total", [0]*bins_max_delta_hits))
-	h7_2_total = h7_2_total + h7_2[0]
-	
-	h7_3 = np.histogram(d3["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
-	h7_3_total = np.array(h_totals_stats.get("h7_3_total", [0]*bins_max_delta_hits))
-	h7_3_total = h7_3_total + h7_3[0]
-	
-	
-	# max delta time 1	
-	h8_0 = np.histogram(d0["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
 	h8_0_total = np.array(h_totals_stats.get("h8_0_total", [0]*bins_max_delta_hits))
-	h8_0_total = h8_0_total + h8_0[0]
-	
-	h8_1 = np.histogram(d1["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
-	h8_1_total = np.array(h_totals_stats.get("h8_1_total", [0]*bins_max_delta_hits))
-	h8_1_total = h8_1_total + h8_1[0]
-
-	h8_2 = np.histogram(d2["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
-	h8_2_total = np.array(h_totals_stats.get("h8_2_total", [0]*bins_max_delta_hits))
-	h8_2_total = h8_2_total + h8_2[0]
-	
-	h8_3 = np.histogram(d3["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
-	h8_3_total = np.array(h_totals_stats.get("h8_3_total", [0]*bins_max_delta_hits))
-	h8_3_total = h8_3_total + h8_3[0]
-	
-	
-	# span cluster 0
-	h9_0 = np.histogram(d0["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
 	h9_0_total = np.array(h_totals_stats.get("h9_0_total", [0]*bins_span))
-	h9_0_total = h9_0_total + h9_0[0]
-
-	h9_1 = np.histogram(d1["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
-	h9_1_total = np.array(h_totals_stats.get("h9_1_total", [0]*bins_span))
-	h9_1_total = h9_1_total + h9_1[0]
-	
-	h9_2 = np.histogram(d2["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
-	h9_2_total = np.array(h_totals_stats.get("h9_2_total", [0]*bins_span))
-	h9_2_total = h9_2_total + h9_2[0]
-	
-	h9_3 = np.histogram(d3["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
-	h9_3_total = np.array(h_totals_stats.get("h9_3_total", [0]*bins_span))
-	h9_3_total = h9_3_total + h9_3[0]
-
-
-	# span cluster 1
-	h10_0 = np.histogram(d0["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
 	h10_0_total = np.array(h_totals_stats.get("h10_0_total", [0]*bins_span))
-	h10_0_total = h10_0_total + h10_0[0]
-	
-	h10_1 = np.histogram(d1["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
-	h10_1_total = np.array(h_totals_stats.get("h10_1_total", [0]*bins_span))
-	h10_1_total = h10_1_total + h10_1[0]
-
-	h10_2 = np.histogram(d2["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
-	h10_2_total = np.array(h_totals_stats.get("h10_2_total", [0]*bins_span))
-	h10_2_total = h10_2_total + h10_2[0]
-	
-	h10_3 = np.histogram(d3["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
-	h10_3_total = np.array(h_totals_stats.get("h10_3_total", [0]*bins_span))
-	h10_3_total = h10_3_total + h10_3[0]
-	
-	
-	# cluster x/y percentage
 	h11_00_total = np.array(h_totals_stats.get("h11_00_total", [0]*time_points))
-	h11_00_total = np.roll(h11_00_total, -1)
-	h11_00_total[-1] = d0["size0"].size * 100 / p00["plane"].size
-	
-	h11_01_total = np.array(h_totals_stats.get("h11_01_total", [0]*time_points))
-	h11_01_total = np.roll(h11_01_total, -1)
-	h11_01_total[-1] = d1["size0"].size * 100 / p01["plane"].size
-	
-	h11_02_total = np.array(h_totals_stats.get("h11_02_total", [0]*time_points))
-	h11_02_total = np.roll(h11_02_total, -1)
-	h11_02_total[-1] = d2["size0"].size * 100 / p02["plane"].size
-	
-	h11_03_total = np.array(h_totals_stats.get("h11_03_total", [0]*time_points))
-	h11_03_total = np.roll(h11_03_total, -1)
-	h11_03_total[-1] = d3["size0"].size * 100 / p03["plane"].size
-				
 	h11_10_total = np.array(h_totals_stats.get("h11_10_total", [0]*time_points))
-	h11_10_total = np.roll(h11_10_total, -1)
-	h11_10_total[-1] = d0["size1"].size * 100 / p10["plane"].size
-
-	h11_11_total = np.array(h_totals_stats.get("h11_11_total", [0]*time_points))
-	h11_11_total = np.roll(h11_11_total, -1)
-	h11_11_total[-1] = d1["size1"].size * 100 / p11["plane"].size
-
-	h11_12_total = np.array(h_totals_stats.get("h11_12_total", [0]*time_points))
-	h11_12_total = np.roll(h11_12_total, -1)
-	h11_12_total[-1] = d2["size1"].size * 100 / p12["plane"].size
-
-	h11_13_total = np.array(h_totals_stats.get("h11_13_total", [0]*time_points))
-	h11_13_total = np.roll(h11_13_total, -1)
-	h11_13_total[-1] = d3["size1"].size * 100 / p13["plane"].size
-	
-	
-	# cluster rate
 	h12_0_total = np.array(h_totals_stats.get("h12_0_total", [0]*time_points))
-	h12_0_total = np.roll(h12_0_total, -1)
-	h12_0_total[-1] = 1e+6*d0["time0"].size/(max(d0["time0"]) -  min(d0["time0"]))
 	
+	h1_1_total = np.array(h_totals_stats.get("h1_1_total", [0]*bins_size))
+	h2_1_total = np.array(h_totals_stats.get("h2_1_total", [0]*bins_size))
+	h3_1_total = np.array(h_totals_stats.get("h3_1_total", [0]*2*bins_size))
+	h4_1_total = np.array(h_totals_stats.get("h4_1_total", [0]*bins_delta_plane))
+	h5_1_total = np.array(h_totals_stats.get("h5_1_total", [0]*bins_missing_strip))
+	h6_1_total = np.array(h_totals_stats.get("h6_1_total", [0]*bins_missing_strip))
+	h7_1_total = np.array(h_totals_stats.get("h7_1_total", [0]*bins_max_delta_hits))
+	h8_1_total = np.array(h_totals_stats.get("h8_1_total", [0]*bins_max_delta_hits))
+	h9_1_total = np.array(h_totals_stats.get("h9_1_total", [0]*bins_span))
+	h10_1_total = np.array(h_totals_stats.get("h10_1_total", [0]*bins_span))
+	h11_01_total = np.array(h_totals_stats.get("h11_01_total", [0]*time_points))
+	h11_11_total = np.array(h_totals_stats.get("h11_11_total", [0]*time_points))
 	h12_1_total = np.array(h_totals_stats.get("h12_1_total", [0]*time_points))
-	h12_1_total = np.roll(h12_1_total, -1)
-	h12_1_total[-1] = 1e+6*d1["time0"].size/(max(d1["time0"]) -  min(d1["time0"]))
 	
+	h1_2_total = np.array(h_totals_stats.get("h1_2_total", [0]*bins_size))
+	h2_2_total = np.array(h_totals_stats.get("h2_2_total", [0]*bins_size))
+	h3_2_total = np.array(h_totals_stats.get("h3_2_total", [0]*2*bins_size))
+	h4_2_total = np.array(h_totals_stats.get("h4_2_total", [0]*bins_delta_plane))
+	h5_2_total = np.array(h_totals_stats.get("h5_2_total", [0]*bins_missing_strip))
+	h6_2_total = np.array(h_totals_stats.get("h6_2_total", [0]*bins_missing_strip))
+	h7_2_total = np.array(h_totals_stats.get("h7_2_total", [0]*bins_max_delta_hits))
+	h8_2_total = np.array(h_totals_stats.get("h8_2_total", [0]*bins_max_delta_hits))
+	h9_2_total = np.array(h_totals_stats.get("h9_2_total", [0]*bins_span))
+	h10_2_total = np.array(h_totals_stats.get("h10_2_total", [0]*bins_span))
+	h11_02_total = np.array(h_totals_stats.get("h11_02_total", [0]*time_points))
+	h11_12_total = np.array(h_totals_stats.get("h11_12_total", [0]*time_points))
 	h12_2_total = np.array(h_totals_stats.get("h12_2_total", [0]*time_points))
-	h12_2_total = np.roll(h12_2_total, -1)
-	h12_2_total[-1] = 1e+6*d2["time0"].size/(max(d2["time0"]) -  min(d2["time0"]))
 	
+	h1_3_total = np.array(h_totals_stats.get("h1_3_total", [0]*bins_size))
+	h2_3_total = np.array(h_totals_stats.get("h2_3_total", [0]*bins_size))
+	h3_3_total = np.array(h_totals_stats.get("h3_3_total", [0]*2*bins_size))
+	h4_3_total = np.array(h_totals_stats.get("h4_3_total", [0]*bins_delta_plane))
+	h5_3_total = np.array(h_totals_stats.get("h5_3_total", [0]*bins_missing_strip))
+	h6_3_total = np.array(h_totals_stats.get("h6_3_total", [0]*bins_missing_strip))
+	h7_3_total = np.array(h_totals_stats.get("h7_3_total", [0]*bins_max_delta_hits))
+	h8_3_total = np.array(h_totals_stats.get("h8_3_total", [0]*bins_max_delta_hits))
+	h9_3_total = np.array(h_totals_stats.get("h9_3_total", [0]*bins_span))
+	h10_3_total = np.array(h_totals_stats.get("h10_3_total", [0]*bins_span))
+	h11_03_total = np.array(h_totals_stats.get("h11_03_total", [0]*time_points))
+	h11_13_total = np.array(h_totals_stats.get("h11_13_total", [0]*time_points))
 	h12_3_total = np.array(h_totals_stats.get("h12_3_total", [0]*time_points))
-	h12_3_total = np.roll(h12_3_total, -1)
-	h12_3_total[-1] = 1e+6*d3["time0"].size/(max(d3["time0"]) -  min(d3["time0"]))
+		
+	
+	if d0.size > 0 and p00.size > 0 and p10.size > 0:
+		h1_0 = np.histogram(d0["size0"], bins = bins_size, range = [0.0, bins_size])
+		h1_0_total = h1_0_total + h1_0[0]
+		
+		h2_0 = np.histogram(d0["size1"], bins = bins_size, range = [0.0, bins_size])
+		h2_0_total = h2_0_total + h2_0[0]
+	
+		h3_0 = np.histogram(d0["size0"]+d0["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
+		h3_0_total = h3_0_total + h3_0[0]
+		
+		# delta time plane
+		h4_0 = np.histogram(d0["time1"] - d0["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
+		h4_0_total = h4_0_total + h4_0[0]
+	
+		# max missing strip 0
+		h5_0 = np.histogram(d0["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h5_0_total = h5_0_total + h5_0[0]
+		
+		# max missing strio 1
+		h6_0 = np.histogram(d0["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h6_0_total = h6_0_total + h6_0[0]
+		
+		# max delta time 0
+		h7_0 = np.histogram(d0["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h7_0_total = h7_0_total + h7_0[0]
+			
+		# max delta time 1	
+		h8_0 = np.histogram(d0["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h8_0_total = h8_0_total + h8_0[0]
+		
+		# span cluster 0
+		h9_0 = np.histogram(d0["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
+		h9_0_total = h9_0_total + h9_0[0]	
+		
+		# span cluster 1
+		h10_0 = np.histogram(d0["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
+		h10_0_total = h10_0_total + h10_0[0]	
+		
+		# cluster x/y percentage
+		h11_00_total = np.roll(h11_00_total, -1)
+		h11_00_total[-1] = d0["size0"].size * 100 / p00["plane"].size
+		
+		h11_10_total = np.roll(h11_10_total, -1)
+		h11_10_total[-1] = d0["size1"].size * 100 / p10["plane"].size	
+		
+		# cluster rate
+		h12_0_total = np.roll(h12_0_total, -1)
+		h12_0_total[-1] = 1e+6*d0["time0"].size/(max(d0["time0"]) -  min(d0["time0"]))	
+	
+	
+	
+	if d1.size > 0 and p01.size > 0 and p11.size > 0:
+		h1_1 = np.histogram(d1["size0"], bins = bins_size, range = [0.0, bins_size])
+		h1_1_total = h1_1_total + h1_1[0]
+		
+		h2_1 = np.histogram(d1["size1"], bins = bins_size, range = [0.0, bins_size])
+		h2_1_total = h2_1_total + h2_1[0]
+	
+		h3_1 = np.histogram(d1["size0"]+d1["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
+		h3_1_total = h3_1_total + h3_1[0]
+		
+		# delta time plane
+		h4_1 = np.histogram(d1["time1"] - d1["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
+		h4_1_total = h4_1_total + h4_1[0]
+	
+		# max missing strip 0
+		h5_1 = np.histogram(d1["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h5_1_total = h5_1_total + h5_1[0]
+		
+		# max missing strio 1
+		h6_1 = np.histogram(d1["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h6_1_total = h6_1_total + h6_1[0]
+		
+		# max delta time 0
+		h7_1 = np.histogram(d1["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h7_1_total = h7_1_total + h7_1[0]
+			
+		# max delta time 1	
+		h8_1 = np.histogram(d1["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h8_1_total = h8_1_total + h8_1[0]
+		
+		# span cluster 0
+		h9_1 = np.histogram(d1["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
+		h9_1_total = h9_1_total + h9_1[0]	
+		
+		# span cluster 1
+		h10_1 = np.histogram(d1["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
+		h10_1_total = h10_1_total + h10_1[0]	
+		
+		# cluster x/y percentage
+		h11_01_total = np.roll(h11_01_total, -1)
+		h11_01_total[-1] = d1["size0"].size * 100 / p01["plane"].size
+		
+		h11_11_total = np.roll(h11_11_total, -1)
+		h11_11_total[-1] = d1["size1"].size * 100 / p11["plane"].size	
+		
+		# cluster rate
+		h12_1_total = np.roll(h12_1_total, -1)
+		h12_1_total[-1] = 1e+6*d1["time0"].size/(max(d1["time0"]) -  min(d1["time0"]))	
+		
+		
+	
+	if d2.size > 0 and p02.size > 0 and p12.size > 0:
+		h1_2 = np.histogram(d2["size0"], bins = bins_size, range = [0.0, bins_size])
+		h1_2_total = h1_2_total + h1_2[0]
+		
+		h2_2 = np.histogram(d2["size1"], bins = bins_size, range = [0.0, bins_size])
+		h2_2_total = h2_2_total + h2_2[0]
+	
+		h3_2 = np.histogram(d2["size0"]+d1["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
+		h3_2_total = h3_2_total + h3_2[0]
+		
+		# delta time plane
+		h4_2 = np.histogram(d2["time1"] - d2["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
+		h4_2_total = h4_2_total + h4_2[0]
+	
+		# max missing strip 0
+		h5_2 = np.histogram(d2["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h5_2_total = h5_2_total + h5_2[0]
+		
+		# max missing strio 1
+		h6_2 = np.histogram(d2["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h6_2_total = h6_2_total + h6_2[0]
+		
+		# max delta time 0
+		h7_2 = np.histogram(d2["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h7_2_total = h7_2_total + h7_2[0]
+			
+		# max delta time 1	
+		h8_2 = np.histogram(d2["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h8_2_total = h8_2_total + h8_2[0]
+		
+		# span cluster 0
+		h9_2 = np.histogram(d2["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
+		h9_2_total = h9_2_total + h9_2[0]	
+		
+		# span cluster 1
+		h10_2 = np.histogram(d2["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
+		h10_2_total = h10_2_total + h10_2[0]	
+		
+		# cluster x/y percentage
+		h11_02_total = np.roll(h11_02_total, -1)
+		h11_02_total[-1] = d2["size0"].size * 100 / p02["plane"].size
+		
+		h11_12_total = np.roll(h11_12_total, -1)
+		h11_12_total[-1] = d2["size1"].size * 100 / p12["plane"].size	
+		
+		# cluster rate
+		h12_2_total = np.roll(h12_2_total, -1)
+		h12_2_total[-1] = 1e+6*d2["time0"].size/(max(d2["time0"]) -  min(d2["time0"]))				
+
+
+	if d3.size > 0 and p03.size > 0 and p13.size > 0:
+		h1_3 = np.histogram(d3["size0"], bins = bins_size, range = [0.0, bins_size])
+		h1_3_total = h1_2_total + h1_3[0]
+		
+		h2_3 = np.histogram(d3["size1"], bins = bins_size, range = [0.0, bins_size])
+		h2_3_total = h2_3_total + h2_3[0]
+	
+		h3_3 = np.histogram(d3["size0"]+d1["size1"], bins = 2*bins_size, range = [0.0, 2*bins_size])
+		h3_3_total = h3_3_total + h3_3[0]
+	
+		# delta time plane
+		h4_3 = np.histogram(d3["time1"] - d3["time0"], bins = bins_delta_plane, range = [-int(dp), int(dp)])
+		h4_3_total = h4_3_total + h4_3[0]
+	
+		# max missing strip 0
+		h5_3 = np.histogram(d3["max_missing_strip0"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h5_3_total = h5_3_total + h5_3[0]
+		
+		# max missing strio 1
+		h6_3 = np.histogram(d3["max_missing_strip1"], bins = bins_missing_strip, range = [0.0, bins_missing_strip])
+		h6_3_total = h6_3_total + h6_3[0]
+		
+		# max delta time 0
+		h7_3 = np.histogram(d3["max_delta_time0"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h7_3_total = h7_3_total + h7_3[0]
+			
+		# max delta time 1	
+		h8_3 = np.histogram(d3["max_delta_time1"], bins = bins_max_delta_hits, range = [0.0, int(dt)])
+		h8_3_total = h8_3_total + h8_3[0]
+		
+		# span cluster 0
+		h9_3 = np.histogram(d3["span_cluster0"], bins = bins_span, range = [0.0, int(spc)])
+		h9_3_total = h9_3_total + h9_3[0]	
+		
+		# span cluster 1
+		h10_3 = np.histogram(d3["span_cluster1"], bins = bins_span, range = [0.0, int(spc)])
+		h10_3_total = h10_3_total + h10_3[0]	
+		
+		# cluster x/y percentage
+		h11_03_total = np.roll(h11_03_total, -1)
+		h11_03_total[-1] = d3["size0"].size * 100 / p03["plane"].size
+		
+		h11_13_total = np.roll(h11_13_total, -1)
+		h11_13_total[-1] = d3["size1"].size * 100 / p13["plane"].size	
+		
+		# cluster rate
+		h12_3_total = np.roll(h12_3_total, -1)
+		h12_3_total[-1] = 1e+6*d3["time0"].size/(max(d3["time0"]) -  min(d3["time0"]))				
+	
 	
 	
 	fig = make_subplots(rows = 3, cols = 4, horizontal_spacing=0.06, vertical_spacing=0.1, subplot_titles = ("clusters size0", "clusters size1","clusters size","delta time planes", "max missing strip0","max missing strip1", "max delta time0",  "max delta time1",  "span cluster0", "span cluster1", "common clusters x/y", "cluster rate"))

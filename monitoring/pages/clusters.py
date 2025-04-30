@@ -83,7 +83,9 @@ def plot_data(cluster_data,logy_toggle,logz_toggle, color_palette, heatmap_color
 	d1 = df_clusters.query("det == 1")
 	d2 = df_clusters.query("det == 2")
 	d3 = df_clusters.query("det == 3")
-
+	if d0.size == 0 and d1.size == 0 and d2.size == 0 and d3.size == 0:
+		return dash.no_update, h_totals_clusters
+		
 	if color_palette == "Config":
 		colors = color_config
 	else:

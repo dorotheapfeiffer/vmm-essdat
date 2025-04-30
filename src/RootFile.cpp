@@ -526,8 +526,9 @@ RootFile::RootFile(Configuration &config) : m_config(config) {
       }
     }
   }
-
-  std::cout << "ROOT file " << m_fileName << " created!" << std::endl;
+  if (m_config.pShowStats) {
+    std::cout << "ROOT file " << m_fileName << " created!" << std::endl;
+  }
 }
 
 RootFile::~RootFile() {}

@@ -92,6 +92,9 @@ def plot_data(hit_data,logy_toggle, logz_toggle, color_palette, heatmap_color, h
 	df_hits = pd.DataFrame(hit_data)
 	hits0 = df_hits.query("plane == 0 and (det >= 0 and det <=3)")
 	hits1 = df_hits.query("plane == 1 and (det >= 0 and det <=3)")
+	if hits0.size == 0 or hits1.size == 0:
+		return dash.no_update, h_totals_hits
+		
 	fig = make_subplots(rows = 2, cols = 4, horizontal_spacing=0.06, vertical_spacing=0.1, subplot_titles = ("hits pos0", "hits pos1", "hits adc0", "hits adc1", "total hits pos0", "total hits pos1", "total hits adc0", "total hits adc1"))
 
 	if color_palette == "Config":

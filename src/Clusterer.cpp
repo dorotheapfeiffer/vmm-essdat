@@ -113,10 +113,10 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
   if (readoutTimestamp >=
       m_stats.GetOldTriggerTimestamp(fecId) + buffer_interval_ns) {
     newData = true;
-    std::cout << "new data: hit " << m_hitNr << ", readoutTime "
-              << readoutTimestamp << ", m_stats.GetOldTriggerTimestamp("
-              << (int)fecId << "): " << m_stats.GetOldTriggerTimestamp(fecId)
-              << std::endl;
+    //std::cout << "new data: hit " << m_hitNr << ", readoutTime "
+    //          << readoutTimestamp << ", m_stats.GetOldTriggerTimestamp("
+    //          << (int)fecId << "): " << m_stats.GetOldTriggerTimestamp(fecId)
+    //          << "\n";
   }
 
   if (newData) {
@@ -169,15 +169,15 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
     tof = totalTime - m_pulseTime[1];
     thePulseTime = m_pulseTime[1];
     if (tof < jitter && m_pulseTime[2] > 0) {
-      std::cout << "Pre-previous pulseTime:" << std::setw(19) << std::fixed
-                << m_pulseTime[1] << " " << tof << std::endl;
+      //std::cout << "Pre-previous pulseTime:" << std::setw(19) << std::fixed
+      //          << m_pulseTime[1] << " " << tof << std::endl;
       tof = totalTime - m_pulseTime[2];
       thePulseTime = m_pulseTime[2];
       if (tof < jitter) {
         negPrevPrevTof++;
-        std::cout.precision(20);
-        std::cout << "no pulse time found, negative tof [ns]: " << tof
-                  << std::endl;
+        //std::cout.precision(20);
+        //std::cout << "no pulse time found, negative tof [ns]: " << tof
+        //          << std::endl;
         return true;
       } else {
         negPrevTof++;
@@ -1195,9 +1195,8 @@ void Clusterer::SaveDate(double the_seconds_start, std::string the_date_start,
                          uint64_t num_triggers) {
   if (m_config.pShowStats) {
     std::cout << "\nXXXXXXXXXXXXXXXXXXXXXXXXXXX Date and time of first pcapng "
-                 "packet XXXXXXXXXXXXXXXXXXXXXXXXXXX"
-              << std::endl;
-    std::cout << the_date_start << std::endl;
+                 "packet XXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
+    std::cout << the_date_start << "\n";
   }
   m_rootFile->SaveDate(the_seconds_start, the_date_start, the_seconds_end,
                        the_date_end, num_triggers);

@@ -34,7 +34,8 @@ def register_callbacks(app):
 		try:
 			print(pathname)
 			if pathname == "/hits":
-				cleanup_old_root_files(".", max_files=10)
+				if delete_root > 0:
+					cleanup_old_root_files(".", max_files=10)
 				root_files = count_files("*.root", file_filter)
 				if not root_files:
 					raise ValueError("No root files found")
@@ -46,9 +47,6 @@ def register_callbacks(app):
 				tree_hits = uproot.open(oldest_file)['hits']
 				tree_plane = uproot.open(oldest_file)['clusters_plane']
 				tree_clusters = uproot.open(oldest_file)['clusters_detector']
-				if delete_root > 0:
-					os.remove(oldest_file)
-				#print(f"Removed {oldest_file}")
 				df_hits = tree_hits.arrays(['adc', 'ch', 'vmm','plane', 'det'], library='pd')
 				df_plane = tree_plane.arrays(['plane', 'det'], library='pd')
 				if cluster_algorithm == "utpc":
@@ -73,6 +71,7 @@ def register_callbacks(app):
 				shared_data["hit_updated_at"] = now
 				shared_data["plane_updated_at"] = now
 				shared_data["cluster_updated_at"] = now
+
 			return (
 				shared_data.get("hit_data", []),
 				shared_data.get("plane_data", []),
