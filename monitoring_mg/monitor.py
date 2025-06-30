@@ -50,7 +50,7 @@ def analyse_data():
 		args_vmmsdat = [cfg.path+"/convertFile", '-f', oldest_file, '-geo', cfg.geo_file, '-bc', cfg.bc, '-tac', cfg.tac, '-th',cfg.th, '-cs',cfg.cs, '-ccs', cfg.ccs, '-dt', cfg.dt, '-mst',cfg.mst, '-spc', cfg.spc, '-dp', cfg.dp, '-coin', 'center-of-masss', '-crl', cfg.crl, '-cru', cfg.cru, '-save', cfg.save, '-algo', '4', '-info', 'monitoring', '-df',cfg.df,'-stats','0']
 		subprocess.call(args_vmmsdat)
 		now_time = timer()
-		#print("vmm-essdat (" + oldest_file + "): " + str(now_time - start_time) + " s\n")
+		print("vmm-essdat (" + oldest_file + "): " + str(now_time - start_time) + " s\n")
 		try:
 			if cfg.acquire_pcapng > 0:
 				os.remove(oldest_file)

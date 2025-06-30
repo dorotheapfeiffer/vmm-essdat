@@ -22,7 +22,7 @@ public:
   bool AnalyzeHits(double readoutTimestamp, uint8_t fecId, uint8_t vmmId,
                    uint16_t chNo, uint16_t bcid, uint16_t tdc, uint16_t adc,
                    bool overThresholdFlag, double chipTime, uint8_t geoId = 0,
-                   double pulseTime = 0);
+                   double pulseTime = 0, bool newFrame=false);
 
   // Analyzing and storing the clusters in plane 0 and 1
   void AnalyzeClustersPlane(std::pair<uint8_t, uint8_t> dp);
@@ -59,6 +59,8 @@ public:
   void createRootFile(string fileName);
 #endif
 private:
+  void AddPulseTime(double newTimestamp);
+  double CalculateTof(double theTime, double &thePulseTime, int &whichPulseTime);
   Configuration &m_config;
   Statistics &m_stats;
 
@@ -78,7 +80,7 @@ private:
 
   int m_cluster_id = 0;
   int m_cluster_detector_id = 0;
-  double m_pulseTime[3];
+  std::vector<double> m_pulseTime;
   double m_pulseTime_prev;
   double m_pulseTime_prev_prev;
   RootFile *m_rootFile;

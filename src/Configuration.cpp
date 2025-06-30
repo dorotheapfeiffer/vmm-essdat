@@ -713,6 +713,9 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
       if (atoi(argv[i + 1]) == 1) {
         pHighMultiplicity = true;
       }
+    }
+    else if (strncmp(argv[i], "-buf", 4) == 0) {
+      pBufferInterval_ns = atol(argv[i + 1]);
     } else if (strncmp(argv[i], "-df", 3) == 0) {
       std::string s = argv[i + 1];
       sscanf(s.c_str(), "%x", &pDataFormat);
@@ -1009,6 +1012,8 @@ bool Configuration::CreateMapping() {
         }
       }
       if (found == false) {
+        pFec_DetectorPlane.emplace(
+          fec, std::make_pair(det, plane));
         pDetectorPlane_Fec.emplace(
             std::make_pair(std::make_pair(det, plane), fec));
       }
@@ -1196,6 +1201,8 @@ bool Configuration::CreateMapping() {
           }
         }
         if (found == false) {
+          pFec_DetectorPlane.emplace(
+            fec, std::make_pair(detector, plane));
           pDetectorPlane_Fec.emplace(
               std::make_pair(std::make_pair(detector, plane), fec));
           /*
@@ -1211,6 +1218,7 @@ bool Configuration::CreateMapping() {
         if (searchFecChip == pFecChip_DetectorPlane.end()) {
           pDetectors[fec][vmm] = (int)detector;
           pPlanes[fec][vmm] = (int)plane;
+          
           for (size_t ch = 0; ch < strips0.size(); ch++) {
             int s0 = strips0[ch].get<int>();
             pPositions[fec][vmm][ch] = s0;

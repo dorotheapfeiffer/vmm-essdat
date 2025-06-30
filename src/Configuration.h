@@ -118,6 +118,7 @@ public:
   std::map<std::pair<uint8_t, uint8_t>, std::pair<uint8_t, uint8_t>>
       pFecChip_DetectorPlane;
   std::multimap<std::pair<uint8_t, uint8_t>, uint8_t> pDetectorPlane_Fec;
+  std::map<uint8_t, std::pair<uint8_t, uint8_t>> pFec_DetectorPlane;
 
   std::map<std::pair<uint8_t, uint8_t>, std::pair<std::string, std::string>>
       pFecChip_DetectorPlane_Labels;
@@ -148,7 +149,7 @@ public:
   std::string pBunchTimeVariable = "psTime";
   std::string pBunchTree = "PKUP";
   bool pUseBunchFile = false;
-
+  long pBufferInterval_ns = 10000000000.0;
   int pPositions[NUM_FENS + 1][16][64];
   int pDetectors[NUM_FENS + 1][16];
   int pPlanes[NUM_FENS + 1][16];

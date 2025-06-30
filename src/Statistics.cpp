@@ -451,14 +451,16 @@ void Statistics::PrintFECStats(Configuration &config) {
       }
 
     } else if (fec == STATISTIC_FEN) {
-      uint64_t first = GetFirstTriggerTimestamp(fec);
-      uint64_t max = GetMaxTriggerTimestamp(fec);
+      uint64_t first = static_cast<uint64_t>(GetFirstTriggerTimestamp(fec));
+      uint64_t max = static_cast<uint64_t>(GetMaxTriggerTimestamp(fec));
 
       m_acq_time = 0;
       m_acq_time = (max - first) / 1000000.0;
       std::cout << "\n****************************************" << std::endl;
       std::cout << "System wide stats" << std::endl;
       std::cout << "****************************************" << std::endl;
+      std::cout << "start time: " << std::setprecision(18) << config.pTime0Correction*1E9+first << "\n"; 
+      std::cout << "end time: " << std::setprecision(18) << config.pTime0Correction*1E9+max << "\n"; 
       for (unsigned int n = 0; n < m_counter_names.size(); n++) {
         std::cout << m_counter_names[n] << ": "
                   << GetCounter(m_counter_names[n], fec) << std::endl;

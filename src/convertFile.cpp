@@ -126,7 +126,22 @@ int main(int argc, char **argv) {
     } else {
       goodFrames++;
     }
-
+    
+    //Temporary check for Nexus file
+    /*
+    uint64_t checkTime =
+    (readoutParser.Packet.HeaderPtr0->PulseHigh) *
+        1.0E+09 +
+    readoutParser.Packet.HeaderPtr0->PulseLow * m_config.pBCTime_ns * 0.5;
+    if(checkTime > 1745513873436393072) {
+      std::cout << "too large " << checkTime << " " << checkTime-1745510273506840430 << "\n";
+      continue;
+    }
+    if(checkTime < 1745510273506840430) {
+      std::cout << "too small " << checkTime << " " << 1745510273506840430-checkTime << "\n";
+      continue;
+    }
+    */
     double temp_pulseTime = 0;
     uint64_t temp_pulseTime_ns = 0;
     if (readoutParser.Packet.version == 0) {
@@ -153,7 +168,7 @@ int main(int argc, char **argv) {
           readoutParser.Packet.HeaderPtr1->PulseHigh * 1.0E+09 +
           readoutParser.Packet.HeaderPtr1->PulseLow * m_config.pBCTime_ns * 0.5;
     }
-
+    m_config.pTime0Correction = t0_correction;
     // Filter out pulse times that come directly after a valid pulse
     // time due to jitter
     double theTriggerTime = 0;
@@ -231,6 +246,7 @@ int main(int argc, char **argv) {
     // TBL MB 73 (0x49)
     // ESTIA 76 (0x4C)
     if (m_config.pDataFormat >= 0x40 && m_config.pDataFormat <= 0x4C) {
+      bool newFrame = true;
       int hits = parser->parse(readoutParser.Packet.DataPtr,
                                readoutParser.Packet.DataLength);
       total_hits += hits;
@@ -320,7 +336,8 @@ int main(int argc, char **argv) {
         bool result = m_Clusterer->AnalyzeHits(
             complete_timestamp, assisterId, hit.VMM, hit.Channel, hit.BC,
             hit.TDC, static_cast<uint16_t>(corrected_adc), overThreshold != 0,
-            corrected_time, hit.GEO, pulseTime);
+            corrected_time, hit.GEO, pulseTime, newFrame);
+        newFrame = false;
         if (result == false ||
             (total_hits >= m_config.nHits && m_config.nHits > 0)) {
           doContinue = false;
@@ -447,6 +464,8 @@ int main(int argc, char **argv) {
   if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
     hit_size = 192;
   }
+  //std::cout << "Analysis time: " << std::setprecision(1) << std::fixed
+  //<< elapsed_seconds << " ms" << std::endl;
   if (m_config.pShowStats) {
     std::cout << "\n****************************************" << std::endl;
     std::cout << "Stats (analysis):" << std::endl;
