@@ -1,6 +1,7 @@
 # CMakeLists.txt for vmm-essdat program. It creates a library with dictionary and a main program
 cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
 project(vmm-essdat)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_CXX_STANDARD 17)

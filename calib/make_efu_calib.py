@@ -37,15 +37,21 @@ with open(efu, 'w') as efu_file:
 				cnt = cnt+1
 				#print(cnt)
 				calibration["VMMHybridCalibration"]["HybridId"] = c["hybridID"]
-				calibration["VMMHybridCalibration"]["CalibrationDate"] = "20250328-185141"
+				calibration["VMMHybridCalibration"]["CalibrationDate"] = "20250828-190000"
 				calibration["VMMHybridCalibration"]["vmm0"] = {}
+				calibration["VMMHybridCalibration"]["vmm0"]["Settings"] = "Settings: 4.5mV/fC"
 				calibration["VMMHybridCalibration"]["vmm0"]["tdc_offset"] = c["time_offsets"]
 				calibration["VMMHybridCalibration"]["vmm0"]["tdc_slope"] = c["time_slopes"]
+				calibration["VMMHybridCalibration"]["vmm0"]["adc_offset"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+				calibration["VMMHybridCalibration"]["vmm0"]["adc_slope"] = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 			else:
 				calibration["VMMHybridCalibration"]["vmm1"] = {}
 				data["Calibrations"].append(calibration)
+				calibration["VMMHybridCalibration"]["vmm1"]["Settings"] = "Settings: 4.5mV/fC"
 				calibration["VMMHybridCalibration"]["vmm1"]["tdc_offset"] = c["time_offsets"]
 				calibration["VMMHybridCalibration"]["vmm1"]["tdc_slope"] = c["time_slopes"]
+				calibration["VMMHybridCalibration"]["vmm1"]["adc_offset"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+				calibration["VMMHybridCalibration"]["vmm1"]["adc_slope"] = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 				
 			#print(c["hybridID"])
 
