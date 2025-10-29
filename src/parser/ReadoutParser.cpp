@@ -9,11 +9,9 @@
 //#include <iostream>
 #include <arpa/inet.h>
 #include <cstring>
+#include <log.h>
 #include <parser/ReadoutParser.h>
-#include <parser/Trace.h>
 
-//#undef TRC_LEVEL
-//#define TRC_LEVEL TRC_L_WAR
 
 ReadoutParser::ReadoutParser() {
   std::memset(NextSeqNum, 0, sizeof(NextSeqNum));
@@ -22,37 +20,36 @@ ReadoutParser::ReadoutParser() {
 int ReadoutParser::validate(const char *Buffer, uint32_t Size,
                             uint8_t ExpectedType) {
   std::memset(&Packet, 0, sizeof(Packet));
-
+  corryvreckan::Log::setSection("ReadoutParser");
   if (Buffer == nullptr or Size == 0) {
-    XTRACE(PROCESS, WAR, "no buffer specified");
+    LOG(WARNING) << "No buffer specified!";
     Stats.ErrorBuffer++;
     return -ReadoutParser::EBUFFER;
   }
 
   if ((Size < MinDataSize) || (Size > MaxUdpDataSize)) {
-    XTRACE(PROCESS, WAR, "Invalid data size (%u)", Size);
+    LOG(WARNING) << "Invalid data size " << Size;
     Stats.ErrorSize++;
     return -ReadoutParser::ESIZE;
   }
 
   uint32_t Version = htons(*(uint16_t *)(Buffer));
   if ((Version >> 8) != 0) {
-    XTRACE(PROCESS, WAR, "Padding is wrong (should be 0)");
+    LOG(WARNING) << "Padding is wrong (should be 0)";
     Stats.ErrorPad++;
     return -ReadoutParser::EHEADER;
   }
 
   if ((Version & 0xff) > 0x01) { //
-    XTRACE(PROCESS, WAR, "Invalid version: expected 0, got %d", Version & 0xff);
+    LOG(WARNING) << "Invalid version: expected 0, got " << static_cast<int>(Version & 0xff);
     Stats.ErrorVersion++;
     return -ReadoutParser::EHEADER;
   }
 
   // Check cookie
   uint32_t SwappedCookie = (*(uint32_t *)(Buffer + 2)) & 0xffffff;
-  // XTRACE(PROCESS, DEB, "SwappedCookie 0x%08x", SwappedCookie);
   if (SwappedCookie != 0x535345) {
-    XTRACE(PROCESS, WAR, "Wrong Cookie, 'ESS' expected");
+    LOG(WARNING) << "Wrong Cookie (" << SwappedCookie << "), 0x535345 or 'ESS' expected";
     Stats.ErrorCookie++;
     return -ReadoutParser::EHEADER;
   }
@@ -63,7 +60,7 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
   if ((Version & 0xff) == 0x00) {
     Packet.version = 0;
     if (Size < sizeof(PacketHeaderV0)) {
-      XTRACE(PROCESS, WAR, "Invalid data size for v0 (%u)", Size);
+      LOG(WARNING) << "Invalid data size for version 0 (" << Size << ")";
       Stats.ErrorSize++;
       return -ReadoutParser::ESIZE;
     }
@@ -73,8 +70,8 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
 #ifndef OMITSIZECHECK
     if (Size != Packet.HeaderPtr0->TotalLength or
         Packet.HeaderPtr0->TotalLength < sizeof(PacketHeaderV0)) {
-      XTRACE(PROCESS, WAR, "Data length mismatch, expected %u, got %u",
-             Packet.HeaderPtr0->TotalLength, Size);
+      LOG(WARNING) << "Data length mismatch, expected " << 
+             Packet.HeaderPtr0->TotalLength << ", got " <<  Size;
       Stats.ErrorSize++;
       return -ReadoutParser::ESIZE;
     }
@@ -82,19 +79,19 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
     Type = Packet.HeaderPtr0->CookieAndType >> 24;
 
     if (Packet.HeaderPtr0->OutputQueue >= MaxOutputQueues) {
-      XTRACE(PROCESS, WAR, "Output queue %u exceeds max size %u",
-             Packet.HeaderPtr0->OutputQueue, MaxOutputQueues);
+      LOG(WARNING) << "Output queue " << 
+             Packet.HeaderPtr0->OutputQueue << " exceeds max size: " 
+             << MaxOutputQueues;
       Stats.ErrorOutputQueue++;
       return -ReadoutParser::EHEADER;
     }
 
     if (NextSeqNum[Packet.HeaderPtr0->OutputQueue] !=
         Packet.HeaderPtr0->SeqNum) {
-      XTRACE(PROCESS, WAR,
-             "Bad sequence number for OQ %u (expected %llu, got %u)",
-             Packet.HeaderPtr0->OutputQueue,
-             NextSeqNum[Packet.HeaderPtr0->OutputQueue],
-             Packet.HeaderPtr0->SeqNum);
+      LOG(TRACE) << "Bad sequence number for OQ "
+      << Packet.HeaderPtr0->OutputQueue << ", expected " <<
+             NextSeqNum[Packet.HeaderPtr0->OutputQueue] << ", got " <<
+             Packet.HeaderPtr0->SeqNum;
       Stats.ErrorSeqNum++;
       NextSeqNum[Packet.HeaderPtr0->OutputQueue] = Packet.HeaderPtr0->SeqNum;
     }
@@ -105,23 +102,24 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
 
     // Check time values
     if (Packet.HeaderPtr0->PulseLow > MaxFracTimeCount) {
-      XTRACE(PROCESS, WAR, "Pulse time low (%u) exceeds max cycle count (%u)",
-             Packet.HeaderPtr0->PulseLow, MaxFracTimeCount);
+       LOG(WARNING) << "Pulse time low (" <<Packet.HeaderPtr0->PulseLow
+       << ") exceeds max cycle count (" << MaxFracTimeCount
+       << ")";
       Stats.ErrorTimeFrac++;
       return -ReadoutParser::EHEADER;
     }
 
     if (Packet.HeaderPtr0->PrevPulseLow > MaxFracTimeCount) {
-      XTRACE(PROCESS, WAR,
-             "Prev pulse time low (%u) exceeds max cycle count (%u)",
-             Packet.HeaderPtr0->PrevPulseLow, MaxFracTimeCount);
+      LOG(WARNING) << "Previous Pulse time low (" <<Packet.HeaderPtr0->PrevPulseLow
+       << ") exceeds max cycle count (" << MaxFracTimeCount
+       << ")";
       Stats.ErrorTimeFrac++;
       return -ReadoutParser::EHEADER;
     }
 
     if (Packet.HeaderPtr0->TotalLength ==
         sizeof(ReadoutParser::PacketHeaderV0)) {
-      XTRACE(PROCESS, DEB, "Heartbeat packet (pulse time only)");
+      LOG(TRACE) << "Heartbeat packet (pulse time only)";
       Stats.HeartBeats++;
     }
 
@@ -130,7 +128,8 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
   else if ((Version & 0xff) == 0x01) {
     Packet.version = 1;
     if (Size < sizeof(PacketHeaderV1)) {
-      XTRACE(PROCESS, WAR, "Invalid data size for v1 (%u)", Size);
+      LOG(WARNING) << "Invalid data size for version 1 (" << Size << ")";
+    
       Stats.ErrorSize++;
       return -ReadoutParser::ESIZE;
     }
@@ -140,8 +139,8 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
 #ifndef OMITSIZECHECK
     if (Size != Packet.HeaderPtr1->TotalLength or
         Packet.HeaderPtr1->TotalLength < sizeof(PacketHeaderV1)) {
-      XTRACE(PROCESS, WAR, "Data length mismatch, expected %u, got %u",
-             Packet.HeaderPtr1->TotalLength, Size);
+            LOG(WARNING) << "Data length mismatch, expected " << 
+             Packet.HeaderPtr1->TotalLength << ", got " <<  Size;
       Stats.ErrorSize++;
       return -ReadoutParser::ESIZE;
     }
@@ -149,19 +148,19 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
     Type = Packet.HeaderPtr1->CookieAndType >> 24;
 
     if (Packet.HeaderPtr1->OutputQueue >= MaxOutputQueues) {
-      XTRACE(PROCESS, WAR, "Output queue %u exceeds max size %u",
-             Packet.HeaderPtr1->OutputQueue, MaxOutputQueues);
+      LOG(WARNING) << "Output queue " << 
+             Packet.HeaderPtr1->OutputQueue << " exceeds max size: " 
+             << MaxOutputQueues;
       Stats.ErrorOutputQueue++;
       return -ReadoutParser::EHEADER;
     }
 
     if (NextSeqNum[Packet.HeaderPtr1->OutputQueue] !=
         Packet.HeaderPtr1->SeqNum) {
-      XTRACE(PROCESS, WAR,
-             "Bad sequence number for OQ %u (expected %llu, got %u)",
-             Packet.HeaderPtr1->OutputQueue,
-             NextSeqNum[Packet.HeaderPtr1->OutputQueue],
-             Packet.HeaderPtr1->SeqNum);
+        LOG(TRACE) << "Bad sequence number for OQ "
+      << Packet.HeaderPtr1->OutputQueue << ", expected " <<
+             NextSeqNum[Packet.HeaderPtr1->OutputQueue] << ", got " <<
+             Packet.HeaderPtr1->SeqNum;
       Stats.ErrorSeqNum++;
       NextSeqNum[Packet.HeaderPtr1->OutputQueue] = Packet.HeaderPtr1->SeqNum;
     }
@@ -172,37 +171,27 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
 
     // Check time values
     if (Packet.HeaderPtr1->PulseLow > MaxFracTimeCount) {
-      XTRACE(PROCESS, WAR, "Pulse time low (%u) exceeds max cycle count (%u)",
-             Packet.HeaderPtr1->PulseLow, MaxFracTimeCount);
+      LOG(WARNING) << "Pulse time low (" <<Packet.HeaderPtr1->PulseLow
+       << ") exceeds max cycle count (" << MaxFracTimeCount
+       << ")";
       Stats.ErrorTimeFrac++;
       return -ReadoutParser::EHEADER;
     }
 
     if (Packet.HeaderPtr1->PrevPulseLow > MaxFracTimeCount) {
-      XTRACE(PROCESS, WAR,
-             "Prev pulse time low (%u) exceeds max cycle count (%u)",
-             Packet.HeaderPtr1->PrevPulseLow, MaxFracTimeCount);
+      LOG(WARNING) << "Previous Pulse time low (" <<Packet.HeaderPtr1->PrevPulseLow
+       << ") exceeds max cycle count (" << MaxFracTimeCount
+       << ")";       
       Stats.ErrorTimeFrac++;
       return -ReadoutParser::EHEADER;
     }
 
     if (Packet.HeaderPtr1->TotalLength ==
         sizeof(ReadoutParser::PacketHeaderV1)) {
-      XTRACE(PROCESS, DEB, "Heartbeat packet (pulse time only)");
+      LOG(TRACE) << "Heartbeat packet (pulse time only)";
       Stats.HeartBeats++;
     }
   }
-
-  /*
-  if ( Type!= ExpectedType) {
-    #ifndef OMITTYPECHECK
-      XTRACE(PROCESS, WAR, "Unsupported data type (%u) for v0 (expected %u)",
-           Type, ExpectedType);
-           Stats.ErrorTypeSubType++;
-      return -ReadoutParser::EHEADER;
-    #endif
-  }
-  */
 
   return ReadoutParser::OK;
 }

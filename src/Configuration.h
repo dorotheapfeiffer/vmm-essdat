@@ -1,3 +1,26 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  Configuration.h
+**
+****************************************************************************/
+
 #pragma once
 
 #include <fstream>
@@ -97,7 +120,6 @@ public:
   bool createJSON = false;
   bool useCalibration = false;
   bool calibrationHistogram = false;
-  bool monitoringHistogram = false;
   int pSaveWhat = 111;
   std::string pConditionCoincidence = "center-of-mass";
 
@@ -139,10 +161,8 @@ public:
   bool fFound = false;
   bool vmmsFound = false;
   int pAlgo = 0;
-  bool pShowStats = true;
   bool pTimeZero = false;
-  bool pHighMultiplicity = false;
-  bool pIsPads[16];
+
   int pDataFormat = 0x44;
   std::string pBunchFile = "ps_run.root";
   std::string pBunchIntensityVariable = "PulseIntensity";
@@ -155,4 +175,7 @@ public:
   int pPlanes[NUM_FENS + 1][16];
   std::map<double, double> pMapPulsetimeIntensity;
   std::map<double, double> pMapTriggertimeIntensity;
+
+  std::string pLogLevel = "INFO";
+  std::vector<std::string> pLogLevels = {"TRACE", "DEBUG", "INFO", "STATUS", "WARNING", "ERROR", "FATAL"};
 };

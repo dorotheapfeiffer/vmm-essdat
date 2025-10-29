@@ -1,19 +1,44 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  convertFile.cpp
+**
+****************************************************************************/
+
 #include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
-
+#include <log.h>
 #include "Clusterer.h"
 #include "Configuration.h"
 #include <parser/CalibrationFile.h>
 #include <parser/R5560Parser.h>
+#include <parser/IBMParser.h>
 #include <parser/ReaderPcap.h>
-#include <parser/Trace.h>
 #include <parser/VMM3Parser.h>
 
 int main(int argc, char **argv) {
+  corryvreckan::Log::addStream(std::cout);
+  corryvreckan::Log::setSection("convertFile");
   TFile *bunchFile = nullptr;
   TTree *bunchTree = nullptr;
   uint64_t total_hits = 0;
@@ -32,18 +57,19 @@ int main(int argc, char **argv) {
   } else {
     return -1;
   }
+
   timeStart = std::chrono::system_clock::now();
   uint64_t last_time = 0;
 
   m_stats.CreateFECStats(m_config);
   m_stats.CreateClusterStats(m_config);
   m_stats.CreatePCAPStats(m_config);
-
+ 
   if (m_config.pUseBunchFile == true) {
     bunchFile = TFile::Open(m_config.pBunchFile.c_str(), "READ");
     if (!bunchFile || bunchFile->IsZombie()) {
-      std::cout << "Error opening bunch file: " << m_config.pBunchFile
-                << std::endl;
+      corryvreckan::Log::setSection("convertFile");
+      LOG(ERROR) << "Error opening bunch file: " << m_config.pBunchFile;          
       return -1;
     }
     bunchTree = (TTree *)(bunchFile->Get(m_config.pBunchTree.c_str()));
@@ -75,19 +101,18 @@ int main(int argc, char **argv) {
   double firstTime = 0;
   char buffer[10000];
   Clusterer *m_Clusterer = new Clusterer(m_config, m_stats);
-  // std::cout << std::setprecision(10);
-  // std::cout << "m_config.pBCTime_ns " << m_config.pBCTime_ns << std::endl;
 
   VMM3Parser *parser = new VMM3Parser();
   R5560Parser *parser_r5560 = new R5560Parser();
+  IBMParser *parser_ibm = new IBMParser();
 
   ReadoutParser readoutParser;
-  Gem::CalibrationFile calfile(m_config.pCalFilename);
+  CalibrationFile calfile(m_config.pCalFilename);     
   ReaderPcap pcap(m_config.pFileName);
   int ret = pcap.open();
   if (ret < 0) {
-    std::cout << "Error opening file: " << m_config.pFileName
-              << ": return value " << ret << std::endl;
+    corryvreckan::Log::setSection("convertFile");
+    LOG(ERROR) << "Error opening pcapng file: " << m_config.pFileName << " (return value " << ret << ")";          
     return -1;
   }
 
@@ -107,15 +132,15 @@ int main(int argc, char **argv) {
   while (doContinue &&
          (rdsize = pcap.read((char *)&buffer, sizeof(buffer))) != -1) {
     if (rdsize == 0) {
-      continue; // non udp data
+      continue;
     }
 
     int ret = readoutParser.validate((char *)&buffer, rdsize,
                                      ReadoutParser::Loki4Amp);
 
     if (seqNumError != readoutParser.Stats.ErrorSeqNum) {
-      // printf("Sequence number error at packet %" PRIu64 "\n",
-      // pcappackets);
+      corryvreckan::Log::setSection("convertFile");
+      LOG(TRACE) << "Sequence number error at packet " << pcappackets; 
     }
     seqNumError = readoutParser.Stats.ErrorSeqNum;
 
@@ -127,21 +152,6 @@ int main(int argc, char **argv) {
       goodFrames++;
     }
     
-    //Temporary check for Nexus file
-    /*
-    uint64_t checkTime =
-    (readoutParser.Packet.HeaderPtr0->PulseHigh) *
-        1.0E+09 +
-    readoutParser.Packet.HeaderPtr0->PulseLow * m_config.pBCTime_ns * 0.5;
-    if(checkTime > 1745513873436393072) {
-      std::cout << "too large " << checkTime << " " << checkTime-1745510273506840430 << "\n";
-      continue;
-    }
-    if(checkTime < 1745510273506840430) {
-      std::cout << "too small " << checkTime << " " << 1745510273506840430-checkTime << "\n";
-      continue;
-    }
-    */
     double temp_pulseTime = 0;
     uint64_t temp_pulseTime_ns = 0;
     if (readoutParser.Packet.version == 0) {
@@ -223,10 +233,6 @@ int main(int argc, char **argv) {
             }
             m_config.pMapPulsetimeIntensity.emplace(
                 std::make_pair(pulseTime, pulseIntensity));
-            /*std::cout << pulse_time_ns << " ," << theTriggerTime << ", "
-                      << theTriggerTime - pulse_time_ns << ", "
-                      << pulseTime << ", " << pulseIntensity <<
-               std::endl;*/
           } else {
             m_stats.IncrementCounter("NumberOfDoubleMatchedTriggers",
                                      STATISTIC_FEN);
@@ -287,27 +293,17 @@ int main(int argc, char **argv) {
             calib.time_slope;
 
         if (calib.adc_slope == 0) {
-          std::cout << "Error in calibration file: adc_slope correction "
-                       "for assister "
-                    << (int)assisterId << ", chip " << (int)hit.VMM
+          LOG(TRACE) << "Error in calibration file: adc_slope correction for assister " << (int)assisterId << ", chip " << (int)hit.VMM
                     << ", channel " << (int)hit.Channel
-                    << " is 0!\nIs that intentional?" << std::endl;
+                    << " is 0!"; 
         }
         int corrected_adc = (adc - calib.adc_offset) * calib.adc_slope;
 
         if (corrected_adc > 1023) {
-          DTRACE(DEB,
-                 "After correction, ADC value larger than 1023 "
-                 "(10bit)!\nUncorrected ADC value %d, uncorrected ADC "
-                 "value %d\n",
-                 adc, corrected_adc);
+         	LOG(TRACE) << "ADC value " << adc << " after correction " << corrected_adc << ", larger than 1023!";
           corrected_adc = 1023;
         } else if (corrected_adc < 0) {
-          DTRACE(DEB,
-                 "After correction, ADC value smaller than 0!"
-                 "\nUncorrected ADC value %d, uncorrected ADC "
-                 "value %d\n",
-                 adc, corrected_adc);
+           LOG(TRACE) << "ADC value " << adc << " after correction " << corrected_adc << ", smaller than 0!";
           corrected_adc = 0;
         }
         double timewalk_correction =
@@ -358,9 +354,6 @@ int main(int argc, char **argv) {
         auto &hit = parser_r5560->Result[i];
         uint16_t fenid =
             static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
-        // std::cout << "Fibre " << (int)hit.RingId << ", Ring " <<
-        // static_cast<int>(hit.RingId / 2) << ", FEN on ring " <<
-        // (int)hit.FENId << ", FEN " << (int)fenid << std::endl;
         if (firstTime == 0) {
           firstTime = hit.TimeHigh * 1.0E+09;
         }
@@ -394,7 +387,47 @@ int main(int argc, char **argv) {
         }
       }
     }
+    else if (m_config.pDataFormat == 0x10 ) {
+      int hits = parser_ibm->parse(readoutParser.Packet.DataPtr,
+                    readoutParser.Packet.DataLength);
+      total_hits += hits;
+      for (int i = 0; i < hits; i++) {
+      auto &hit = parser_ibm->Result[i];
+      uint16_t fenid =
+        static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
+      if (firstTime == 0) {
+        firstTime = hit.TimeHigh * 1.0E+09;
+      }
+
+      double complete_timestamp = 0;
+      if (t0_correction == 0) {
+        //  ESS time format use 64bit timestamp in nanoseconds
+        //  To be able to use double as type for timestamp calculation,
+        //  the timestamp has to be truncated to 52 bit
+        //  The easiest to have a relative timestamp with respect to the
+        //  start of the run
+        complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
+                  hit.TimeLow * m_config.pBCTime_ns * 0.5;
+      } else {
+        // If several files will be joined later, it is recommended to
+        // just remove the most significant bits of the 64 bit timestamp
+        complete_timestamp = hit.TimeHigh * 1.0E+09 -
+                  t0_correction * 1.0E+09 +
+                  hit.TimeLow * m_config.pBCTime_ns * 0.5;
+      }
+
+      m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
+      bool result = m_Clusterer->SaveHitsIBM(
+        complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
+        hit.Type, hit.ADC, pulseTime);
+      if (result == false ||
+        (total_hits >= m_config.nHits && m_config.nHits > 0)) {
+        doContinue = false;
+        break;
+      }
+    }
   }
+}
 
   m_Clusterer->SaveDate(pcap.firstPacketSeconds, pcap.firstPacketDate,
                         pcap.lastPacketSeconds, pcap.lastPacketDate,
@@ -464,70 +497,70 @@ int main(int argc, char **argv) {
   if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
     hit_size = 192;
   }
-  //std::cout << "Analysis time: " << std::setprecision(1) << std::fixed
-  //<< elapsed_seconds << " ms" << std::endl;
-  if (m_config.pShowStats) {
-    std::cout << "\n****************************************" << std::endl;
-    std::cout << "Stats (analysis):" << std::endl;
-    std::cout << "****************************************" << std::endl;
-    std::cout << "Analysis time: " << std::setprecision(1) << std::fixed
-              << elapsed_seconds << " ms" << std::endl;
-    std::cout << "Hit rate: " << std::scientific
-              << static_cast<double>(1000 * total_hits / elapsed_seconds)
-              << " hit/s" << std::endl;
-    std::cout << "Data rate: " << std::scientific
-              << static_cast<double>(1000 * total_hits * hit_size /
-                                     elapsed_seconds)
-              << " bit/s" << std::endl;
-    std::cout << "****************************************" << std::endl;
-    if (m_config.pUseBunchFile == true) {
-      std::cout << m_stats.GetCounter("NumberOfBunches_1E7_1E8", STATISTIC_FEN)
+  corryvreckan::Log::setSection("convertFile");
+  LOG(INFO) << "****************************************";
+  LOG(INFO) << "Stats (analysis):";
+  LOG(INFO) << "****************************************";
+  LOG(INFO) << "Analysis time: " << std::setprecision(1) << std::fixed <<
+    elapsed_seconds << " ms";
+  LOG(INFO) << "Hit rate: " << std::scientific <<
+    static_cast < double > (1000 * total_hits / elapsed_seconds) <<
+    " hit/s";
+  LOG(INFO) << "Data rate: " << std::scientific <<
+    static_cast < double > (1000 * total_hits * hit_size /
+      elapsed_seconds) <<
+    " bit/s";
+  LOG(INFO) << "****************************************";
+  
+    if (m_config.pUseBunchFile == true) {    
+      LOG(INFO) << m_stats.GetCounter("NumberOfBunches_1E7_1E8", STATISTIC_FEN)
                 << " bunches (between 1E+7 and 1E+8 protons), with total "
                    "intensity of "
                 << std::fixed << std::setprecision(12)
                 << m_stats.GetCounter("IntensityOfBunches_1E7_1E8",
                                       STATISTIC_FEN)
-                << " protons" << std::endl;
-      std::cout << m_stats.GetCounter("NumberOfBunches_1E8_1E9", STATISTIC_FEN)
+                << " protons";
+      LOG(INFO) << m_stats.GetCounter("NumberOfBunches_1E8_1E9", STATISTIC_FEN)
                 << " bunches (between 1E+8 and 1E+9 protons), with total "
                    "intensity of "
                 << std::fixed << std::setprecision(12)
                 << m_stats.GetCounter("IntensityOfBunches_1E8_1E9",
                                       STATISTIC_FEN)
-                << " protons" << std::endl;
-      std::cout << m_stats.GetCounter("NumberOfBunches_1E9_1E10", STATISTIC_FEN)
+                << " protons";
+      LOG(INFO) << m_stats.GetCounter("NumberOfBunches_1E9_1E10", STATISTIC_FEN)
                 << " bunches (between 1E+9 and 1E+10 protons), with total "
                    "intensity of "
                 << std::fixed << std::setprecision(12)
                 << m_stats.GetCounter("IntensityOfBunches_1E9_1E10",
                                       STATISTIC_FEN)
-                << " protons" << std::endl;
-      std::cout << m_stats.GetCounter("NumberOfBunches_1E10_1E11",
+                << " protons";
+      LOG(INFO) << m_stats.GetCounter("NumberOfBunches_1E10_1E11",
                                       STATISTIC_FEN)
                 << " bunches (between 1E+10 and 1E+11 protons), with total "
                    "intensity of "
                 << std::fixed << std::setprecision(12)
                 << m_stats.GetCounter("IntensityOfBunches_1E10_1E11",
                                       STATISTIC_FEN)
-                << " protons" << std::endl;
-      std::cout << m_stats.GetCounter("NumberOfBunches_1E11_1E12",
+                << " protons";
+      LOG(INFO) << m_stats.GetCounter("NumberOfBunches_1E11_1E12",
                                       STATISTIC_FEN)
                 << " bunches (between 1E+11 and 1E+12 protons), with total "
                    "intensity of "
                 << std::fixed << std::setprecision(12)
                 << m_stats.GetCounter("IntensityOfBunches_1E11_1E12",
                                       STATISTIC_FEN)
-                << " protons" << std::endl;
-      std::cout << m_stats.GetCounter("NumberOfBunches_1E12_1E13",
+                << " protons";
+      LOG(INFO) << m_stats.GetCounter("NumberOfBunches_1E12_1E13",
                                       STATISTIC_FEN)
                 << " bunches (between 1E+12 and 1E+13 protons), with total "
                    "intensity of "
                 << std::fixed << std::setprecision(12)
                 << m_stats.GetCounter("IntensityOfBunches_1E12_1E13",
                                       STATISTIC_FEN)
-                << " protons" << std::endl;
-      std::cout << "****************************************" << std::endl;
+                << " protons";
+      LOG(INFO) << "****************************************";
     }
-  }
+  	pcap.printStats();
+  
   return 0;
 }

@@ -3,18 +3,17 @@
 ///
 /// \file
 ///
-/// \brief Parser for ESS readout of R5560 data
+/// \brief Parser for ESS readout of I-BM data
 ///
 /// Stat counters accumulate
 //===----------------------------------------------------------------------===//
 #include <iostream>
 #include <log.h>
-#include <parser/R5560Parser.h>
-
+#include <parser/IBMParser.h>
 
 // Assume we start after the Common PacketHeader
-int R5560Parser::parse(const char *Buffer, unsigned int Size) {
-  corryvreckan::Log::setSection("R5560Parser");
+int IBMParser::parse(const char *Buffer, unsigned int Size) {
+  corryvreckan::Log::setSection("IBMParser");
   Result.clear();
   uint32_t GoodReadouts{0};
 
@@ -31,14 +30,14 @@ int R5560Parser::parse(const char *Buffer, unsigned int Size) {
     return GoodReadouts;
   }
 
-  R5560Parser::R5560Data *DataPtr = (struct R5560Data *)Buffer;
+  IBMParser::IBMData *DataPtr = (struct IBMData *)Buffer;
 
   for (unsigned int i = 0; i < Size / DataLength; i++) {
     Stats.Readouts++;
 
-    R5560Parser::R5560Data Readout = DataPtr[i];
+    IBMParser::IBMData Readout = DataPtr[i];
     if (Readout.RingId > MaxRingId) {
-      LOG(WARNING) << "Invalid RingId " << Readout.RingId << ", Max is " <<  MaxRingId;
+    	LOG(WARNING) << "Invalid RingId " << Readout.RingId << ", Max is " <<  MaxRingId;
       Stats.ErrorRing++;
       continue;
     }

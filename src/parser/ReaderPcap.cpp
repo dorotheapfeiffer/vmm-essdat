@@ -7,21 +7,18 @@
 ///
 /// Using the Wireshark API https://www.tcpdump.org/manpages/pcap.3pcap.html
 //===----------------------------------------------------------------------===//
-
 #include <algorithm>
 #include <arpa/inet.h>
 #include <cassert>
 #include <cinttypes>
 #include <cstring>
-#include <fmt/format.h>
 #include <iomanip>
 #include <iostream>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <parser/ReaderPcap.h>
 #include <sstream>
-
-// GCOVR_EXCL_START
+#include <log.h>
 
 // Protocol identifiers
 // Header and data location specifications
@@ -45,16 +42,19 @@ ReaderPcap::~ReaderPcap() {
 }
 
 int ReaderPcap::open() {
+  corryvreckan::Log::setSection("ReaderPcap");
+  LOG(TRACE) << "Before 1 ";
   char ErrorBuffer[PCAP_ERRBUF_SIZE];
   PcapHandle = pcap_open_offline(FileName.c_str(), ErrorBuffer);
   if (PcapHandle == nullptr) {
     return -1;
   }
-
+  LOG(TRACE) << "Before 2 ";
   if (pcap_compile(PcapHandle, &PcapFilter, FilterUdp, 1,
                    PCAP_NETMASK_UNKNOWN) == -1) {
     return -1;
   }
+    LOG(TRACE) << "Before 3 ";
 
   return 0;
 }
@@ -86,15 +86,6 @@ int ReaderPcap::validatePacket(pcap_pkthdr *Header, const unsigned char *Data) {
   uint16_t UdpLen = htons(udp->uh_ulen);
 #endif
   assert(UdpLen >= UDP_HEADER_SIZE);
-
-#if 0
-  fmt::print("UDP Payload, Packet {}, time: {}:{} seconds, size: {} bytes\n",
-       Stats.PacketsTotal, (int)header->ts.tv_sec, (int)header->ts.tv_usec,
-       (int)header->len);
-  printf("ip src->dest: 0x%08x:%d ->0x%08x:%d\n",
-         ntohl(*(uint32_t*)&ip->ip_src), ntohs(udp->uh_sport),
-         ntohl(*(uint32_t*)&ip->ip_dst), ntohs(udp->uh_dport));
-#endif
 
   return UdpLen;
 }
@@ -162,10 +153,20 @@ void ReaderPcap::printPacket(unsigned char *Data, size_t Size) {
 }
 
 void ReaderPcap::printStats() {
-  fmt::print("Total packets        {}\n", Stats.PacketsTotal);
-  fmt::print("Truncated packets    {}\n", Stats.PacketsTruncated);
-  fmt::print("  ipproto UDP        {}\n", Stats.IpProtoUDP);
-  fmt::print("  other              {}\n", Stats.PacketsNoMatch);
-  fmt::print("Total bytes          {}\n", Stats.BytesTotal);
+  corryvreckan::Log::setSection("ReaderPcap");
+
+  LOG(INFO) << "****************************************";
+  LOG(INFO) << "UDP packet statistics";
+  LOG(INFO) << "****************************************";
+  LOG(INFO) << "First packet date: " <<firstPacketDate;
+  LOG(INFO) << "First packet seconds: " <<std::setprecision(1) << std::fixed <<firstPacketSeconds;
+  LOG(INFO) << "Last packet date: " <<lastPacketDate;
+  LOG(INFO) << "Last packet seconds: " <<std::setprecision(1) << std::fixed << lastPacketSeconds;
+  LOG(INFO) << "Total packets: " << Stats.PacketsTotal;
+  LOG(INFO) << "Truncated packets: " << Stats.PacketsTruncated;
+  LOG(INFO) << "ipproto udp: " << Stats.IpProtoUDP;
+  LOG(INFO) << "others: " << Stats.PacketsNoMatch;
+  LOG(INFO) << "Total bytes: " << Stats.BytesTotal;
+  LOG(INFO) << "****************************************";
 }
-// GCOVR_EXCL_STOP
+

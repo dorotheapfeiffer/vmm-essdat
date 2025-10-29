@@ -79,13 +79,15 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/convertLinkDef.h MODULE vmm-essdat)
 #${CMAKE_CURRENT_SOURCE_DIR}/src/convertLinkDef.h MODULE vmm-essdat)
 
 #---Create a shared library with generated dictionary
-add_library(vmm-essdat SHARED 
+add_library(vmm-essdat SHARED
+${CMAKE_CURRENT_SOURCE_DIR}/src/log.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/VMM3Parser.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/parser/IBMParser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/R5560Parser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/ReadoutParser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/CalibrationFile.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/ReaderPcap.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/Clusterer.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/RootFile.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/Configuration.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/Statistics.cpp vmm-essdatDict.cxx)
-target_link_libraries(vmm-essdat ${ROOT_LIBRARIES} fmt pcap)
+target_link_libraries(vmm-essdat ${ROOT_LIBRARIES} pcap)
 
 #---Create  a main program using the library
 add_executable(convertFile ${CMAKE_CURRENT_SOURCE_DIR}/src/convertFile.cpp)

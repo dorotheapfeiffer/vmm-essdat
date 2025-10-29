@@ -1,8 +1,30 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  Clusterer.cpp
+**
+****************************************************************************/
+
 #include "Clusterer.h"
 #include <algorithm>
 #include <cmath>
-#include <parser/Trace.h>
-
+#include <log.h>
 #include <chrono>
 #include <functional>
 #include <future>
@@ -10,8 +32,6 @@
 #include <thread>
 #define UNUSED __attribute__((unused))
 
-//#undef TRC_LEVEL
-//#define TRC_LEVEL TRC_L_DEB
 
 auto now = std::chrono::steady_clock::now;
 
@@ -30,7 +50,62 @@ Clusterer::Clusterer(Configuration &config, Statistics &stats)
 
 Clusterer::~Clusterer() { RootFile::Dispose(); }
 
-//====================================================================================================================
+bool Clusterer::SaveHitsIBM(double readoutTimestamp, uint8_t ringId, uint8_t fenId, uint8_t type, uint32_t adc_raw, double pulseTime) {
+ bool newData = false;
+  if (m_stats.GetFirstTriggerTimestamp(ringId * FENS_PER_RING + fenId) == 0) {
+    m_stats.SetFirstTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                     readoutTimestamp);
+  }
+  if (m_stats.GetMaxTriggerTimestamp(ringId * FENS_PER_RING + fenId) <
+      readoutTimestamp) {
+    m_stats.SetMaxTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                   readoutTimestamp);
+  }
+  double buffer_interval_ns = 10000000.0;
+  if (readoutTimestamp >=
+      m_stats.GetOldTriggerTimestamp(ringId * FENS_PER_RING + fenId) +
+          buffer_interval_ns) {
+    newData = true;
+  }
+
+  if (newData) {
+    m_rootFile->SaveHits();
+    m_stats.SetOldTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                   readoutTimestamp);
+  }
+ 
+  m_hitNr++;
+  corryvreckan::Log::setSection("Clusterer");
+  LOG(TRACE) << m_hitNr;
+
+  const float CONVERSION_MV= 8192.0/static_cast<float>(262143);
+  
+  uint32_t adc_summed = (adc_raw & 0x00FFFFFF);
+  uint16_t samples = (adc_raw >>24) & 0xFF;
+  if(samples == 0) {
+    samples = 1;
+  }
+  float adc = static_cast<float>(adc_summed/samples);
+  float adc_mv = adc*CONVERSION_MV;
+  
+  
+ 	  HitIBM theHit;
+	  theHit.ring = ringId;
+	  theHit.fen = fenId;
+	  theHit.type = type;
+	  theHit.samples = samples;
+	  theHit.adc_mv = adc_mv;
+	  theHit.adc = adc;
+	  theHit.adc_raw = adc_summed;
+	  theHit.time = readoutTimestamp;
+	  theHit.pulse_time = pulseTime;
+
+	  m_rootFile->AddHits(std::move(theHit));
+	  
+	
+  	return true;
+}
+
 bool Clusterer::SaveHitsR5560(double readoutTimestamp, uint8_t ringId,
                               uint8_t fenId, uint8_t groupId, uint16_t ampa,
                               uint16_t ampb, uint16_t ampc, uint16_t ampd,
@@ -126,22 +201,21 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
   int pos = m_config.pPositions[fecId][vmmId][chNo];
 
   if (pos == -1 || fecId > 191 || fecId < 0) {
-    DTRACE(DEB, "\t\tDetector or Plane not defined for FEC %d and vmmId %d!\n",
-           (int)fecId, (int)vmmId);
-    //std::cout << "not found " << (int)fecId << " " << (int)vmmId << " " << (int)chNo << std::endl;
+    corryvreckan::Log::setSection("Clusterer");
+    LOG(TRACE) << "Detector or Plane not defined for FEC " << (int)fecId << " and vmmId " << (int)vmmId;
     return true;
   }
 
   bool newData = false;
-  //newData = newFrame;
+
 
   if (readoutTimestamp >=
       m_stats.GetOldTriggerTimestamp(fecId) + m_config.pBufferInterval_ns) {
     newData = true;
-    //std::cout << "new data: hit " << m_hitNr << ", readoutTime "
-    //          << readoutTimestamp << ", m_stats.GetOldTriggerTimestamp("
-    //          << (int)fecId << "): " << m_stats.GetOldTriggerTimestamp(fecId)
-    //          << "\n";
+    corryvreckan::Log::setSection("Clusterer");
+    LOG(TRACE) <<  "new data: hit " << m_hitNr << ", readoutTime "
+    << readoutTimestamp << ", m_stats.GetOldTriggerTimestamp("
+    << (int)fecId << "): " << m_stats.GetOldTriggerTimestamp(fecId);
   }
 
   if (newData) {
@@ -168,7 +242,6 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
         auto dp0 = std::make_pair(det.first, 0);
         auto dp1 = std::make_pair(det.first, 1);
         if (m_stats.GetLowestCommonTriggerTimestampDet(det.first) < ts) {
-          //std::cout << "clustering for det " << (int)det.first << ": " << m_stats.GetOldTriggerTimestamp(fecId)  << " " << ts << " m_config.pBufferInterval_ns " << m_config.pBufferInterval_ns << std::endl;
           m_stats.SetLowestCommonTriggerTimestampPlane(dp0, ts);
           m_stats.SetLowestCommonTriggerTimestampPlane(dp1, ts);
           m_stats.SetLowestCommonTriggerTimestampDet(det.first, ts);
@@ -255,17 +328,20 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
     }
   }
 
+  corryvreckan::Log::setSection("Clusterer");
+  
   if (m_oldFecId != fecId || newData) {
-    DTRACE(DEB, "\tfecId  %d\n", fecId);
+    LOG(TRACE) << "FEC " << (int)fecId;
   }
   if (m_oldVmmId != vmmId || newData) {
-    DTRACE(DEB, "\tDetector %d, plane %d, vmmId  %d\n", (int)det, (int)plane,
-           vmmId);
+      LOG(TRACE) << "Detector " << (int)det << ", plane " << (int)plane
+      << ", vmm " << (int)vmmId;
   }
-  DTRACE(DEB, "\t\tpos %d (chNo  %d) - overThresholdFlag %d\n", pos, chNo,
-         (int)overThresholdFlag);
-  DTRACE(DEB, "\t\t\tbcid %d, tdc %d, adc %d\n", bcid, tdc, adc & 0x3FF);
-  DTRACE(DEB, "\t\t\ttotal time %f, chip time %f ns\n", totalTime, chipTime);
+   LOG(TRACE) << "\t\tpos " << (int)pos << " (ChNo " << chNo << ") - overThresholdFlag "
+   <<(int)overThresholdFlag;
+   LOG(TRACE) << "\t\tbcid " << bcid << ", tdc " << tdc << ", adc "
+   <<(int)(adc & 0x3FF);
+  LOG(TRACE) << "\t\ttotal " << totalTime << "ns, chip time " << chipTime << " ns";
 
   if (m_stats.GetFirstTriggerTimestamp(fecId) == 0) {
     m_stats.SetFirstTriggerTimestamp(fecId, readoutTimestamp); 
@@ -330,7 +406,7 @@ int Clusterer::ClusterByTime(std::pair<uint8_t, uint8_t> dp) {
 //====================================================================================================================
 int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
                               ClusterContainer &cluster, double maxDeltaTime) {
-
+  corryvreckan::Log::setSection("Clusterer");
   int maxMissingStrip = 0;
   double spanCluster = 0;
 
@@ -397,7 +473,7 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
       largestTime = time1;
       largestADCTime = time1;
       largestADCPos = strip1;
-      DTRACE(DEB, "\nDetector %d, plane %d cluster:\n", (int)det, (int)plane);
+      LOG(TRACE) << "Detector " << (int)det << ", plane " << (int)plane << " cluster";
     }
 
     // Add members of a cluster, if it is either the beginning of a cluster,
@@ -408,10 +484,9 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
          time1 - startTime <=
              m_config.pSpanClusterTime[m_config.pDets[dp.first]] &&
          largestTime - time1 <=
-             m_config.pSpanClusterTime[m_config.pDets[dp.first]])) {
-      DTRACE(DEB, "\tstrip %d, time %llu, adc %d:\n", strip1,
-             static_cast<unsigned long long>(time1), adc1);
-
+            m_config.pSpanClusterTime[m_config.pDets[dp.first]])) {
+          LOG(TRACE) << "\tstrip " << strip1 << ", time " 
+            << static_cast<unsigned long long>(time1) << ", adc " <<adc1;
       if (adc1 > adc2) {
         largestADCTime = time1;
         largestADCPos = strip1;
@@ -464,7 +539,7 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
       // Valid cluster
       if (stripCount < m_config.pMinClusterSize[m_config.pDets[dp.first]] ||
           totalADC == 0) {
-        DTRACE(DEB, "******** INVALID CLUSTER SIZE ********%d\n\n", stripCount);
+          LOG(TRACE) << "Invalid cluster size: " << stripCount;
       } else {
 
         spanCluster = (largestTime - startTime);
@@ -536,7 +611,7 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
 
         m_cluster_id++;
 
-        DTRACE(DEB, "Cluster id %d\n", m_cluster_id);
+        LOG(TRACE) << "Cluster id: " << m_cluster_id;
         clusterPlane.det = det;
         clusterPlane.plane = plane;
         if (m_config.pUseBunchFile == false ||
@@ -594,11 +669,6 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
     centerOfGravity2 = (centerOfGravity2 / totalADC2);
     centerOfTime2 = (centerOfTime2 / totalADC2);
 
-    /*std::cout << "Type 1 cluster maxDeltaTime " << maxDeltaTime
-              << ", strip_count " << stripCount << ",spanCluster "
-              << spanCluster << ",largestTime " << largestTime << ",starttime "
-              << startTime << std::endl;*/
-
     m_stats.SetStatsPlane("DeltaTimeHits", dp, maxDeltaTime);
     m_stats.SetStatsPlane("MissingStripsCluster", dp, maxMissingStrip);
     m_stats.SetStatsPlane("SpanClusterTime", dp, spanCluster);
@@ -652,9 +722,7 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
     clusterPlane.times = std::move(vTimes);
     clusterPlane.adcs = std::move(vADC);
     m_cluster_id++;
-
-    DTRACE(DEB, "Cluster id %d\n", m_cluster_id);
-
+    LOG(TRACE) << "Cluster id: " << m_cluster_id;
     clusterPlane.det = det;
     clusterPlane.plane = plane;
 
@@ -903,19 +971,14 @@ int Clusterer::MatchClustersDetector(uint8_t det) {
 
       m_stats.SetStatsDetector("ClusterCntDetector", det, 0);
       clusterCount++;
-
-      DTRACE(DEB, "\ncommon cluster det %d", (int)det);
-      DTRACE(DEB, "\tpos x/pos y: %f/%f", clusterDetector.pos0,
-             clusterDetector.pos1);
-      DTRACE(DEB, "\ttime x/time y: %llu/%llu",
-             static_cast<unsigned long long>(clusterDetector.time0),
-             static_cast<unsigned long long>(clusterDetector.time1));
-      DTRACE(DEB, "\tadc x/adc y: %u/%u", clusterDetector.adc0,
-             clusterDetector.adc1);
-      DTRACE(DEB, "\tsize x/size y: %u/%u", clusterDetector.size0,
-             clusterDetector.size1);
-      DTRACE(DEB, "\tdelta time planes: %d\n",
-             (int)clusterDetector.delta_plane_0_1);
+      corryvreckan::Log::setSection("Clusterer");
+      LOG(TRACE) << "Common cluster " <<  (int)det;
+      LOG(TRACE) << "pos x/pos y: " << clusterDetector.pos0 << "/" << clusterDetector.pos0;
+      LOG(TRACE) << "time x/time y: " << static_cast<unsigned long long>(clusterDetector.time0) << "/"
+            << static_cast<unsigned long long>(clusterDetector.time1);
+      LOG(TRACE) << "adc x/adc y: " << clusterDetector.adc0 << "/" << clusterDetector.adc1;
+      LOG(TRACE) << "size x/size y: " << clusterDetector.size0 << "/" << clusterDetector.size1;
+      LOG(TRACE) << "delta time planes: " << (int)clusterDetector.delta_plane_0_1;
 
       if (m_config.pUseBunchFile == false ||
           (clusterDetector.bunch_intensity >= 1E+11 &&
@@ -935,9 +998,9 @@ void Clusterer::AnalyzeClustersPlane(std::pair<uint8_t, uint8_t> dp) {
     return;
   }
   int cnt = ClusterByTime(dp);
-  DTRACE(DEB, "%d cluster in detector %d plane %d\n", cnt, (int)std::get<0>(dp),
-         (int)std::get<1>(dp));
-
+  corryvreckan::Log::setSection("Clusterer");
+  LOG(TRACE) << "Number of clusters in detector " << (int)std::get<0>(dp) << " plane " << (int)std::get<1>(dp) << ": " << cnt;
+  
   m_hits[dp].clear();
 }
 
@@ -954,7 +1017,6 @@ void Clusterer::AnalyzeClustersDetector(uint8_t det) {
   }
 
   cnt = MatchClustersDetector(det);
-  //std::cout << "Matched clusters for det " << (int)det << ": " << cnt << "\n";
   if (m_config.pSaveWhat == 10 || m_config.pSaveWhat == 11 ||
       m_config.pSaveWhat == 110 || m_config.pSaveWhat == 111) {
     m_rootFile->SaveClustersPlane(std::move(m_clusters[dp0]));
@@ -1177,54 +1239,52 @@ bool Clusterer::ChooseClustersToBeMatched(std::pair<uint8_t, uint8_t> dp) {
 }
 
 void Clusterer::FinishAnalysis() {
-  double ts = 0;
-  for (auto const &fec : m_config.pFecs) {
-    if (ts < m_stats.GetMaxTriggerTimestamp(fec)) {
-      ts = m_stats.GetMaxTriggerTimestamp(fec);
+  if(m_config.pDataFormat  >= 0x40) {
+    double ts = 0;
+    for (auto const &fec : m_config.pFecs) {
+      if (ts < m_stats.GetMaxTriggerTimestamp(fec)) {
+        ts = m_stats.GetMaxTriggerTimestamp(fec);
+      }
     }
-  }
-  for (auto const &det : m_config.pDets) {
-    auto dp0 = std::make_pair(det.first, 0);
-    auto dp1 = std::make_pair(det.first, 1);
+    for (auto const &det : m_config.pDets) {
+      auto dp0 = std::make_pair(det.first, 0);
+      auto dp1 = std::make_pair(det.first, 1);
 
-    // Set the largest timestamp of plane to detector
-    // cluster all remaining data in plane
-    m_stats.SetLowestCommonTriggerTimestampPlane(dp0, ts);
-    m_stats.SetLowestCommonTriggerTimestampPlane(dp1, ts);
-    m_stats.SetLowestCommonTriggerTimestampDet(det.first, ts);
+      // Set the largest timestamp of plane to detector
+      // cluster all remaining data in plane
+      m_stats.SetLowestCommonTriggerTimestampPlane(dp0, ts);
+      m_stats.SetLowestCommonTriggerTimestampPlane(dp1, ts);
+      m_stats.SetLowestCommonTriggerTimestampDet(det.first, ts);
 
-    AnalyzeClustersPlane(dp0);
-    AnalyzeClustersPlane(dp1);
+      AnalyzeClustersPlane(dp0);
+      AnalyzeClustersPlane(dp1);
 
-    AnalyzeClustersDetector(det.first);
+      AnalyzeClustersDetector(det.first);
 
-    if (m_config.pSaveWhat % 2 == 1) {
-      m_rootFile->SaveHits();
+      if (m_config.pSaveWhat % 2 == 1) {
+        m_rootFile->SaveHits();
+      }
     }
-  }
-  if (m_config.pShowStats) {
     if (m_config.pSaveWhat >= 10) {
       m_stats.PrintClusterStats(m_config);
     }
-    m_stats.PrintFECStats(m_config);
-    std::cout << "posTof " << posTof << std::endl;
-    std::cout << "negTof " << negTof << std::endl;
-    std::cout << "negPrevTof " << negPrevTof << std::endl;
-    std::cout << "negPrevPrevTof " << negPrevPrevTof << std::endl;
   }
+  else {
+    m_rootFile->SaveHits();
+    
+  }
+  m_stats.PrintFECStats(m_config);
+ 
 }
 
 void Clusterer::SaveDate(double the_seconds_start, std::string the_date_start,
                          double the_seconds_end, std::string the_date_end,
                          uint64_t num_triggers) {
-  if (m_config.pShowStats) {
-    std::cout << "\nXXXXXXXXXXXXXXXXXXXXXXXXXXX Date and time of first pcapng "
-                 "packet XXXXXXXXXXXXXXXXXXXXXXXXXXX\n";
-    std::cout << the_date_start << "\n";
-  }
   m_rootFile->SaveDate(the_seconds_start, the_date_start, the_seconds_end,
                        the_date_end, num_triggers);
 }
+
+
 
 void Clusterer::FillCalibHistos(uint16_t fec, uint8_t vmm, uint8_t ch,
                                 float adc, float adc_corrected, float chip_time,

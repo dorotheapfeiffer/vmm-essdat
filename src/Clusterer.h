@@ -1,3 +1,26 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  Clusterer.h
+**
+****************************************************************************/
+
 #pragma once
 #include "RootFile.h"
 #include "Statistics.h"
@@ -18,6 +41,10 @@ public:
                      uint16_t ampc, uint16_t ampd, uint8_t om, uint32_t counter,
                      double pulseTime);
 
+  bool SaveHitsIBM(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
+                     uint8_t type, uint32_t adc_raw,
+                     double pulseTime);
+                     
   // Analyzing and storing the hits
   bool AnalyzeHits(double readoutTimestamp, uint8_t fecId, uint8_t vmmId,
                    uint16_t chNo, uint16_t bcid, uint16_t tdc, uint16_t adc,
@@ -55,9 +82,7 @@ public:
   void FillCalibHistos(uint16_t fec, uint8_t vmm, uint8_t ch, float adc,
                        float adc_corrected, float chip_time,
                        float chip_time_corrected);
-#ifdef USE_ROOT
-  void createRootFile(string fileName);
-#endif
+
 private:
   void AddPulseTime(double newTimestamp);
   double CalculateTof(double theTime, double &thePulseTime, int &whichPulseTime);

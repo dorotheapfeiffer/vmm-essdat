@@ -1,3 +1,26 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  RootFile.h
+**
+****************************************************************************/
+
 #pragma once
 
 #include <fstream>
@@ -26,6 +49,7 @@ public:
   void SaveHistograms();
   void AddHits(Hit &&the_hit);
   void AddHits(HitR5560 &&the_hit);
+  void AddHits(HitIBM &&the_hit);
   void SaveHits();
   void SaveClustersPlane(ClusterVectorPlane &&clusters_plane);
   void SaveClustersDetector(ClusterVectorDetector &&clusters_detector);
@@ -39,8 +63,8 @@ public:
 private:
   Configuration &m_config;
   RootFile(Configuration &config);
+  void CreateIBMHistos();
   void CreateCAENHistos();
-  void CreateMonitoringHistos();
   void CreateCalibHistos();
 
   ~RootFile();
@@ -61,11 +85,13 @@ private:
 
   Hit m_hit;
   HitR5560 m_hit_r5560;
+  HitIBM m_hit_ibm;
   ClusterPlane m_cluster_plane;
   ClusterDetector m_cluster_detector;
 
   HitVector m_hits;
   std::vector<HitR5560> m_hits_r5560;
+  std::vector<HitIBM> m_hits_ibm;
   std::map<std::pair<uint8_t, std::string>, int> m_map_TH2D;
   std::map<std::pair<uint8_t, std::string>, int> m_map_TH1D;
   std::map<std::tuple<uint16_t, uint8_t, std::string>, int> m_map_calib_TH2D;

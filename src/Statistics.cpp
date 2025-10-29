@@ -1,6 +1,29 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  Statistics.cpp
+**
+****************************************************************************/
+
 #include <iomanip>
 #include <iostream>
-
+#include <log.h>
 #include "Statistics.h"
 
 void Statistics::CreatePCAPStats(Configuration &config) {
@@ -361,7 +384,7 @@ void Statistics::PrintClusterStats(Configuration &config) {
   long totalPlane1 = 0;
   long totalDetector = 0;
   bool bothPlanes = false;
-
+  corryvreckan::Log::setSection("Statistics");
   for (auto const &det : config.pDets) {
     auto dp0 = std::make_pair(det.first, 0);
     auto dp1 = std::make_pair(det.first, 1);
@@ -377,15 +400,15 @@ void Statistics::PrintClusterStats(Configuration &config) {
       cnt1 = m_stats_plane[std::make_pair(dp1, "ClusterCntPlane")][0];
     }
 
-    std::cout << "\n\n****************************************" << std::endl;
-    std::cout << "Stats detector " << (int)det.first << std::endl;
-    std::cout << "****************************************" << std::endl;
+  	LOG(INFO) << "****************************************";
+  	LOG(INFO) << "Stats detector " << (int)det.first;
+    LOG(INFO) << "****************************************";
 
     for (auto const &stat : m_stats_plane_names) {
-      if (config.pIsPads[det.first] || config.GetDetectorPlane(dp0) == true) {
-        std::cout << "\n****************************************" << std::endl;
-        std::cout << "Plane 0: " << stat << std::endl;
-        std::cout << "****************************************" << std::endl;
+      if (config.GetDetectorPlane(dp0) == true) {
+        LOG(INFO) << "****************************************";
+        LOG(INFO) << "Plane 0: " << stat;
+        LOG(INFO) << "****************************************";
         std::vector<long> v = m_stats_plane[std::make_pair(dp0, stat)];
         for (unsigned int n = 0; n < static_cast<unsigned int>(m_limits[stat]);
              n++) {
@@ -393,61 +416,69 @@ void Statistics::PrintClusterStats(Configuration &config) {
         }
       }
       if (config.GetDetectorPlane(dp1) == true) {
-        std::cout << "****************************************" << std::endl;
-        std::cout << "\n****************************************" << std::endl;
-        std::cout << "Plane 1: " << stat << std::endl;
-        std::cout << "****************************************" << std::endl;
+        LOG(INFO) << "****************************************";
+        LOG(INFO) << "****************************************";
+        LOG(INFO) << "Plane 1: " << stat;
+        LOG(INFO) << "****************************************";
         std::vector<long> v = m_stats_plane[std::make_pair(dp1, stat)];
         for (unsigned int n = 0; n < static_cast<unsigned int>(m_limits[stat]);
              n++) {
           StatsOutput(n, v[n], stat, cnt1);
         }
       }
-      std::cout << "****************************************" << std::endl;
+      LOG(INFO) <<"****************************************";
     }
     if (config.GetDetectorPlane(dp0) == true &&
         config.GetDetectorPlane(dp1) == true) {
       for (auto const &stat : m_stats_detector_names) {
-        std::cout << "\n****************************************" << std::endl;
-        std::cout << stat << std::endl;
-        std::cout << "****************************************" << std::endl;
+        LOG(INFO) << "****************************************";
+        LOG(INFO) <<  stat;
+        LOG(INFO) <<  "****************************************";
         std::vector<long> v = m_stats_detector[std::make_pair(det.first, stat)];
         for (unsigned int n = 0; n < static_cast<unsigned int>(m_limits[stat]);
              n++) {
           StatsOutput(n, v[n], stat, cnt, cnt0, cnt1);
         }
-        std::cout << "****************************************" << std::endl;
+        LOG(INFO) << "****************************************";
       }
     }
   }
 }
 
 void Statistics::PrintFECStats(Configuration &config) {
+  corryvreckan::Log::setSection("Statistics");
+  uint64_t total_min = 0;
+  uint64_t total_max = 0;
   for (auto const &fec : config.pFecs) {
     if (fec < STATISTIC_FEN) {
       uint64_t first = GetFirstTriggerTimestamp(fec);
       uint64_t max = GetMaxTriggerTimestamp(fec);
-
+      if(total_min == 0 || first < total_min) {
+        total_min = first;
+      }
+      if(total_max == 0 || total_max < max) {
+        total_max = max;
+      }
       m_acq_time = 0;
       m_acq_time = (max - first) / 1000000.0;
       if (GetCounter("ParserDataReadouts", fec) > 0) {
-        std::cout << "\n****************************************" << std::endl;
-        std::cout << "RING " << (int)fec / 16 << ", FEN " << fec % 16
-                  << std::endl;
-        std::cout << "Stats (acquisition):" << std::endl;
-        std::cout << "****************************************" << std::endl;
-        std::cout << "Hits: " << GetCounter("ParserDataReadouts", fec)
-                  << std::endl;
-        std::cout << "Acq time: " << std::setprecision(1) << std::fixed
-                  << m_acq_time << " ms" << std::endl;
-        std::cout << "Hit rate FEN: " << std::scientific
+        LOG(INFO) << "****************************************";
+        LOG(INFO) << "RING " << (int)fec / 16 << ", FEN " << fec % 16
+                 ;
+        LOG(INFO) << "Stats (acquisition):";
+        LOG(INFO) << "****************************************";
+        LOG(INFO) << "Hits: " << GetCounter("ParserDataReadouts", fec)
+                 ;
+        LOG(INFO) << "Acq time: " << std::setprecision(1) << std::fixed
+                  << m_acq_time << " ms";
+        LOG(INFO) << "Hit rate FEN: " << std::scientific
                   << 1000 * GetCounter("ParserDataReadouts", fec) / m_acq_time
-                  << " hit/s" << std::endl;
-        std::cout << "Data rate FEN: " << std::scientific
+                  << " hit/s";
+        LOG(INFO) << "Data rate FEN: " << std::scientific
                   << 1000 * GetCounter("ParserDataReadouts", fec) * 160 /
                          m_acq_time
-                  << " bit/s" << std::endl;
-        std::cout << "****************************************" << std::endl;
+                  << " bit/s";
+        LOG(INFO) << "****************************************";
       }
 
     } else if (fec == STATISTIC_FEN) {
@@ -455,68 +486,68 @@ void Statistics::PrintFECStats(Configuration &config) {
       uint64_t max = static_cast<uint64_t>(GetMaxTriggerTimestamp(fec));
 
       m_acq_time = 0;
-      m_acq_time = (max - first) / 1000000.0;
-      std::cout << "\n****************************************" << std::endl;
-      std::cout << "System wide stats" << std::endl;
-      std::cout << "****************************************" << std::endl;
-      std::cout << "start time: " << std::setprecision(18) << config.pTime0Correction*1E9+first << "\n"; 
-      std::cout << "end time: " << std::setprecision(18) << config.pTime0Correction*1E9+max << "\n"; 
+      m_acq_time = (total_max - total_min) / 1000000.0;
+      LOG(INFO) <<"****************************************";
+      LOG(INFO) <<"System wide stats";
+      LOG(INFO) <<"****************************************";
+      LOG(INFO) <<"start time: " << std::setprecision(18) << config.pTime0Correction*1E9+first; 
+      LOG(INFO) <<"end time: " << std::setprecision(18) << config.pTime0Correction*1E9+max; 
       for (unsigned int n = 0; n < m_counter_names.size(); n++) {
-        std::cout << m_counter_names[n] << ": "
-                  << GetCounter(m_counter_names[n], fec) << std::endl;
+        LOG(INFO) <<m_counter_names[n] << ": "
+                  << GetCounter(m_counter_names[n], fec);
       }
-      std::cout << "****************************************" << std::endl;
-      std::cout << "Trigger rate: " << std::scientific << std::setprecision(2)
+      LOG(INFO) <<"****************************************";
+      LOG(INFO) <<"Trigger rate: " << std::scientific << std::setprecision(2)
                 << static_cast<double>(1000 *
                                        GetCounter("NumberOfTriggers", fec)) /
                        static_cast<double>(m_acq_time)
                 << " trigger/s (total triggers: "
-                << GetCounter("NumberOfTriggers", fec) << ")" << std::endl;
-      std::cout << "****************************************" << std::endl;
+                << GetCounter("NumberOfTriggers", fec) << ")";
+      LOG(INFO) <<"****************************************";
     }
   }
 
   if (config.pDataFormat >= 0x40 && config.pDataFormat <= 0x4C) {
-    std::cout << "\n****************************************" << std::endl;
+    LOG(INFO) <<"****************************************";
     long cnt = 0;
     for (auto const &det : config.pDets) {
       cnt += GetStatsDetector("ClusterCntDetector", det.first, 0);
     }
-    std::cout << "Total Cluster rate: " << std::scientific
-              << 1000 * cnt / m_acq_time << " particles/s" << std::endl;
-    std::cout << "****************************************" << std::endl;
+    LOG(INFO) <<"Total Cluster rate: " << std::scientific
+              << 1000 * cnt / m_acq_time << " particles/s";
+    LOG(INFO) <<"****************************************";
   }
 }
 
 void Statistics::StatsOutput(int n, long val, std::string stat, long cnt,
                              long cnt0, long cnt1) {
-
+  corryvreckan::Log::setSection("Statistics");
   if (m_limits[stat] > 1 && cnt > 0) {
     // if (cnt == 0)
     // cnt = 1;
     if (m_factors[stat] != 1) {
-      std::cout << static_cast<unsigned int>(n / m_factors[stat]) << "-"
+      LOG(INFO) <<static_cast<unsigned int>(n / m_factors[stat]) << "-"
                 << static_cast<unsigned int>(n / m_factors[stat] +
                                              1 / m_factors[stat] - 1)
                 << " " << m_units[stat] << ":  " << val << " ("
                 << std::setprecision(1) << std::fixed
-                << (100 * (double)val / (double)cnt) << " %)" << std::endl;
+                << (100 * (double)val / (double)cnt) << " %)";
     } else {
-      std::cout << static_cast<unsigned int>(n / m_factors[stat]) << " "
+      LOG(INFO) <<static_cast<unsigned int>(n / m_factors[stat]) << " "
                 << m_units[stat] << ":  " << val << " (" << std::setprecision(1)
-                << std::fixed << (100 * (double)val / (double)cnt) << " %)"
-                << std::endl;
+                << std::fixed << (100 * (double)val / (double)cnt) << " %)";
+               
     }
   } else {
     if (cnt0 > 0 && cnt1 > 0) {
-      std::cout << val << " (common cluster in detector, "
+      LOG(INFO) <<val << " (common cluster in detector, "
                 << std::setprecision(1) << (100 * (double)val / (double)cnt0)
                 << " % plane 0, " << std::setprecision(1) << std::fixed
                 << (100 * (double)val / (double)cnt1) << " % plane 1)"
-                << std::endl;
+               ;
     } else {
-      std::cout << val << " (" << std::setprecision(1) << std::fixed
-                << (100 * (double)val / (double)cnt) << " %)" << std::endl;
+      LOG(INFO) <<val << " (" << std::setprecision(1) << std::fixed
+                << (100 * (double)val / (double)cnt) << " %)";
     }
   }
 }

@@ -1,3 +1,26 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  DataStructures.h
+**
+****************************************************************************/
+
 #pragma once
 #include <vector>
 
@@ -29,6 +52,18 @@ struct HitR5560 {
   int16_t ampc;
   int16_t ampd;
   uint8_t om;
+  double pulse_time;
+  double time;
+};
+
+struct HitIBM {
+  uint8_t ring;
+  uint8_t fen;
+  uint8_t type;
+  float adc_mv;
+  float adc;
+  uint32_t adc_raw;
+  uint16_t samples;
   double pulse_time;
   double time;
 };

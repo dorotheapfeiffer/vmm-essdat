@@ -1,3 +1,27 @@
+/***************************************************************************
+**  vmm-essdat
+**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
+**
+**  This program is free software: you can redistribute it and/or modify
+**  it under the terms of the GNU General Public License as published by
+**  the Free Software Foundation, either version 3 of the License, or
+**  (at your option) any later version.
+**
+**  You should have received a copy of the GNU General Public License
+**  along with this program.  If not, see http://www.gnu.org/licenses/.
+**
+****************************************************************************
+**  Contact: dorothea.pfeiffer@cern.ch
+**  Date: 12.10.2025
+**  Version: 1.0.0
+****************************************************************************
+**
+**  vmm-essdat
+**  Configuration.cpp
+**
+****************************************************************************/
+
+
 #include <fstream>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -5,6 +29,7 @@
 #pragma GCC diagnostic pop
 
 #include "Configuration.h"
+#include <log.h>
 #include <cmath>
 #include <cstring>
 #include <ctime>
@@ -26,7 +51,7 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
          "[1,0] -spc [500,400] "
       << "-dp [200,250] -coin center-of-mass -crl [0.75,0.5] -cru [3.0,5] "
          "-save [[1],[1,2],[1,2]] "
-         "-swap 0 -json 0 -n 0 -df SRS -cahi 1 -hm 0 -t0 1721234540"
+         "-swap 0 -json 0 -n 0 -df 0x44 -cahi 1 -hm 0 -t0 1721234540"
       << std::endl;
 
   std::cout << "\n\nFlags:\n" << std::endl;
@@ -231,22 +256,7 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
                "plane0/plane1 charge ratio. Optional argument (default 2), one "
                "value per detector.\n"
             << std::endl;
-  std::cout
-      << "-hm:    High-multiplicity matching mode (values 0 or 1).\n"
-         "        During the normal matching vmm-sdat searches for each "
-         "cluster in one "
-         "plane the best match in the other plane, based on the minimum time "
-         "difference between the clusters.\n"
-         "        Before considering a cluster in the other plane as match "
-         "candidate, "
-         "conditions like cluster size, and charge sharing are checked.\n"
-         "        In high-multiplicity mode, each combination of clusters in "
-         "the two "
-         "planes that fulfils the conditions is stored as detector_cluster.\n"
-         "        That means each plane cluster can appear several times as "
-         "part of a "
-         "detector_cluster.\n"
-      << std::endl;
+  
   std::cout << "-save:  select which data to store in root file. Input is a "
                "list of lists of detectors, e.g. [[1,2],[1,2],[1,2,3]]."
             << std::endl;
@@ -269,9 +279,6 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
             << std::endl;
   std::cout << "-n:     number of hits to analyze. Optional argument (default "
                "0, i.e. all hits).\n"
-            << std::endl;
-  std::cout << "-stats: Show statistics of the run (default 0, do not show any "
-               "stats).\n"
             << std::endl;
   std::cout << "-cal:   Name of the calibration file. A calibration file is a "
                "JSON file containing an ADC and/or time correction in the form "
@@ -314,7 +321,7 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
 }
 
 bool Configuration::ParseCommandLine(int argc, char **argv) {
-
+  corryvreckan::Log::setSection("Configuration");
   if (argc == 1 || argc % 2 == 0) {
     return PrintUsage("Wrong number of arguments!", argv[argc - 1]);
   }
@@ -322,6 +329,12 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     if (strncmp(argv[i], "-f", 2) == 0) {
       fFound = true;
       pFileName = argv[i + 1];
+    } else if (strncmp(argv[i], "-log", 4) == 0) {
+      pLogLevel = argv[i + 1];
+      auto it = find(pLogLevels.begin(), pLogLevels.end(), pLogLevel);
+	    if (it == pLogLevels.end()) {
+	  	  pLogLevel = "INFO";
+	    }   
     } else if (strncmp(argv[i], "-bf", 3) == 0) {
       pUseBunchFile = true;
       pBunchFile = argv[i + 1];
@@ -664,7 +677,6 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
       pSaveClustersPlane.clear();
       pSaveClustersDetector.clear();
       n = 0;
-      pHighMultiplicity = false;
 
       for (auto &s : vTokens) {
         std::vector<std::string> v;
@@ -694,8 +706,6 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
       }
     } else if (strncmp(argv[i], "-n", 2) == 0) {
       nHits = atoi(argv[i + 1]);
-    } else if (strncmp(argv[i], "-stats", 6) == 0) {
-      pShowStats = atoi(argv[i + 1]);
     } else if (strncmp(argv[i], "-cal", 4) == 0) {
       pCalFilename = argv[i + 1];
       useCalibration = true;
@@ -709,11 +719,7 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
       }
     } else if (strncmp(argv[i], "-algo", 5) == 0) {
       pAlgo = atoi(argv[i + 1]);
-    } else if (strncmp(argv[i], "-hm", 3) == 0) {
-      if (atoi(argv[i + 1]) == 1) {
-        pHighMultiplicity = true;
-      }
-    }
+    } 
     else if (strncmp(argv[i], "-buf", 4) == 0) {
       pBufferInterval_ns = atol(argv[i + 1]);
     } else if (strncmp(argv[i], "-df", 3) == 0) {
@@ -732,13 +738,12 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
       //  Miracles 0x38 (56)
       //  CSPEC 0x3C (60)
       std::vector<int> v_valid_values = {0x40, 0x44, 0x48, 0x49, 0x4c,
-                                         0x30, 0x32, 0x34, 0x38, 0x3C};
+                                         0x30, 0x32, 0x34, 0x38, 0x3C, 0x10};
       auto searchValid =
           std::find(v_valid_values.begin(), v_valid_values.end(), pDataFormat);
       if (searchValid == v_valid_values.end()) {
-        std::cout << pDataFormat << std::endl;
         return PrintUsage("The data format parameter -df accepts only the "
-                          "instruments that use VMM or CAEN R5560!",
+                          "instruments that use VMM, CAEN R5560 or I-BM!",
                           argv[i + 1]);
       }
     } else {
@@ -763,9 +768,6 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     return PrintUsage("Detectors, planes, fecs and VMMs have to be defined, or "
                       "a geometry file loaded!",
                       nullptr);
-  }
-  if (pShowStats) {
-    std::cout << "Analyzing " << pFileName << " ..." << std::endl;
   }
   pRootFilename = pFileName;
   if (pRootFilename.find(".h5") != std::string::npos) {
@@ -941,7 +943,7 @@ bool Configuration::GetDetectorPlane(std::pair<uint8_t, uint8_t> dp) {
 }
 
 bool Configuration::CreateMapping() {
-  if (pDataFormat >= 0x30 && pDataFormat <= 0x3C) {
+  if (pDataFormat >= 0x10 && pDataFormat <= 0x3C) {
     pFecs.clear();
     for (int ring = 0; ring < NUM_RINGS; ring++) {
       for (int fec = 0; fec < FENS_PER_RING; fec++) {
@@ -961,9 +963,6 @@ bool Configuration::CreateMapping() {
     for (int v = 0; v < 16; v++) {
       pDetectors[f][v] = -1;
       pPlanes[f][v] = -1;
-      if (f == 0) {
-        pIsPads[v] = false;
-      }
       for (int ch = 0; ch < 64; ch++) {
         pPositions[f][v][ch] = -1;
         pPositions[f][v][ch] = -1;
@@ -1065,50 +1064,15 @@ bool Configuration::CreateMapping() {
           if (search != end(pOffsets)) {
             offset = search->second;
           }
-          if (pChannelMapping == "gem_swapped") {
-            int channel = 0;
-            for (int ch = 0; ch < 64; ch++) {
-              if (ch % 2 == 0) {
-                channel = ch + 1;
-              } else {
-                channel = ch - 1;
-              }
-              if (flag == 1) {
-                pPositions[f][v][ch] = offset - channel;
-              } else {
-                pPositions[f][v][ch] = offset + channel;
-              }
-            }
-
-          } else if (pChannelMapping == "mm1") {
-            int channel = 0;
-
-            for (int ch = 0; ch < 64; ch++) {
-              if (ch % 2 == 0) {
-                if ((offset / 64) % 2 == 0) {
-                  channel = 96 - (ch / 2);
-                } else {
-                  channel = 64 - (ch / 2);
-                }
-              } else {
-                if ((offset / 64) % 2 == 0) {
-                  channel = 97 + (ch - 1) / 2;
-                } else {
-                  channel = 1 + (ch - 1) / 2;
-                }
-              }
-              pPositions[f][v][ch] = channel;
-            }
-
-          } else {
-            for (int ch = 0; ch < 64; ch++) {
-              if (flag == 1) {
-                pPositions[f][v][ch] = offset - ch;
-              } else {
-                pPositions[f][v][ch] = offset + ch;
-              }
+ 
+          for (int ch = 0; ch < 64; ch++) {
+            if (flag == 1) {
+              pPositions[f][v][ch] = offset - ch;
+            } else {
+              pPositions[f][v][ch] = offset + ch;
             }
           }
+         
         }
       }
     }
@@ -1148,7 +1112,6 @@ bool Configuration::CreateMapping() {
               "Wrong lengths of id arrays in geometry file.");
         } else {
           plane = geo["plane"].get<uint8_t>();
-          pIsPads[detector] = false;
           auto searchDetPlane =
               p_DetPlane_idx.find(std::make_pair(detector, plane));
           if (searchDetPlane == p_DetPlane_idx.end()) {
@@ -1205,11 +1168,6 @@ bool Configuration::CreateMapping() {
             fec, std::make_pair(detector, plane));
           pDetectorPlane_Fec.emplace(
               std::make_pair(std::make_pair(detector, plane), fec));
-          /*
-          pDetectorPlane_Labels.emplace(
-              std::make_pair(std::make_pair(detector, plane),
-                             std::make_pair(labelDetector, labelPlane)));
-          */
         }
 
         // Search whether there is a new fec/chip combination
@@ -1227,11 +1185,6 @@ bool Configuration::CreateMapping() {
           // Add the new fec/chip pair to the list
           pFecChip_DetectorPlane.emplace(std::make_pair(
               std::make_pair(fec, vmm), std::make_pair(detector, plane)));
-          /*
-          pFecChip_DetectorPlane_Labels.emplace(
-              std::make_pair(std::make_pair(fec, vmm),
-                             std::make_pair(labelDetector, labelPlane)));
-          */
         }
       }
     } catch (const std::exception &exc) {

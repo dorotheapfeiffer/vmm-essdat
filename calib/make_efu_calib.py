@@ -20,7 +20,9 @@ with open(efu, 'w') as efu_file:
 	data["Detector"]="NMX"
 	data["Version"] = 1
 	data["Comment"]= "v1: TDC, no ADC and timewalk"
-	data["Hybrids"]= 40
+	data["Date"] = "27.10.2025"
+	data["Info"] = "Info"
+	data["Hybrids"]= 10
 	data["Calibrations"] = []  
 	with open(calib, "r") as calib_file:
 		the_calib  = json.load(calib_file)
@@ -37,7 +39,7 @@ with open(efu, 'w') as efu_file:
 				cnt = cnt+1
 				#print(cnt)
 				calibration["VMMHybridCalibration"]["HybridId"] = c["hybridID"]
-				calibration["VMMHybridCalibration"]["CalibrationDate"] = "20250828-190000"
+				calibration["VMMHybridCalibration"]["CalibrationDate"] = "20251027-170000"
 				calibration["VMMHybridCalibration"]["vmm0"] = {}
 				calibration["VMMHybridCalibration"]["vmm0"]["Settings"] = "Settings: 4.5mV/fC"
 				calibration["VMMHybridCalibration"]["vmm0"]["tdc_offset"] = c["time_offsets"]

@@ -8,11 +8,9 @@
 /// Stat counters accumulate
 //===----------------------------------------------------------------------===//
 #include <iostream>
-#include <parser/Trace.h>
+#include <log.h>
 #include <parser/VMM3Parser.h>
 
-#undef TRC_LEVEL
-#define TRC_LEVEL TRC_L_DEB
 
 // Assume we start after the Common PacketHeader
 int VMM3Parser::parse(const char *Buffer, unsigned int Size) {
@@ -21,15 +19,14 @@ int VMM3Parser::parse(const char *Buffer, unsigned int Size) {
 
   if (Buffer == nullptr) {
     Stats.ErrorSize++;
-    XTRACE(DATA, WAR, "Invalid data pointer");
-     std::cout << "Invalid data pointer" << std::endl;
+    LOG(WARNING) << "Invalid data pointer";
     return GoodReadouts;
   }
 
   if (Size % DataLength != 0) {
     Stats.ErrorSize++;
-    XTRACE(DATA, WAR, "Invalid data length - %d should be multiple of %d",
-           Size, DataLength);
+    LOG(WARNING) << "Invalid data length - (" << Size << 
+    ") should be multiple of " << DataLength; 
     return GoodReadouts;
   }
 
@@ -39,37 +36,40 @@ int VMM3Parser::parse(const char *Buffer, unsigned int Size) {
    
     VMM3Parser::VMM3Data Readout = DataPtr[i];
     if (Readout.RingId > MaxRingId) {
-      XTRACE(DATA, WAR, "Invalid RingId %d (Max is %d)", Readout.RingId, MaxRingId);
+      LOG(WARNING) << "Invalid RingId " << Readout.RingId << ", Max is " <<  MaxRingId;
       Stats.ErrorRing++;
       continue;
     }
     if ((Readout.FENId > MaxFENId))  {
-      XTRACE(DATA, WAR, "Invalid FENId %d (valid: 0 - %d)", Readout.FENId, MaxFENId);
+      LOG(WARNING) << "Invalid FENId " << Readout.FENId << " (valid: 0 - " <<  MaxFENId << ")";
       Stats.ErrorFEN++;
       continue;
     }
   
     if (Readout.DataLength != DataLength)  {
-      XTRACE(DATA, WAR, "Invalid header length %d - must be %d bytes",
-             Readout.DataLength, DataLength);
+    	LOG(WARNING) << "Invalid header length " << Readout.DataLength << 
+    	" - must be " <<  DataLength << " bytes";
       Stats.ErrorDataLength++;
       continue;
     }
  
     if (Readout.TimeLow > MaxFracTimeCount)  {
-      XTRACE(DATA, WAR, "Invalid TimeLO %u (max is %u)", Readout.TimeLow, MaxFracTimeCount);
+     LOG(WARNING) << "Invalid TimeLO " << Readout.TimeLow << 
+    	" (max is " <<  MaxFracTimeCount << ")";
       Stats.ErrorTimeFrac++;
       continue;
     }
 
     if (Readout.BC > MaxBCValue)  {
-      XTRACE(DATA, WAR, "Invalid BC %u (max is %u)", Readout.BC, MaxBCValue);
+       LOG(WARNING) << "Invalid BC " << Readout.BC << 
+    	" (max is " <<  MaxBCValue << ")";
       Stats.ErrorBC++;
       continue;
     }
 
     if ((Readout.OTADC & ADCMask) > MaxADCValue) {
-      XTRACE(DATA, WAR, "Invalid TDC %u (max is %u)", Readout.OTADC & 0x7fff, MaxADCValue);
+      LOG(WARNING) << "Invalid ADC " << (Readout.OTADC & 0x7fff) << 
+    	" (max is " <<  MaxADCValue << ")";
       Stats.ErrorADC++;
       continue;
     }
@@ -77,13 +77,15 @@ int VMM3Parser::parse(const char *Buffer, unsigned int Size) {
     // So far no checks for GEO and TDC
 
     if (Readout.VMM > MaxVMMValue) {
-      XTRACE(DATA, WAR, "Invalid VMM %u (max is %u)", Readout.VMM, MaxVMMValue);
+      LOG(WARNING) << "Invalid VMM " << Readout.VMM << 
+    	" (max is " <<  MaxVMMValue << ")";
       Stats.ErrorVMM++;
       continue;
     }
 
     if (Readout.Channel > MaxChannelValue) {
-      XTRACE(DATA, WAR, "Invalid Channel %u (max is %u)", Readout.Channel, MaxChannelValue);
+      LOG(WARNING) << "Invalid Channel " << Readout.Channel << 
+    	" (max is " <<  MaxChannelValue << ")";
       Stats.ErrorChannel++;
       continue;
     }

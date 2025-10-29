@@ -6,11 +6,13 @@
 #pragma link C++ nestedtypedefs;
 #pragma link C++ class Hit + ;
 #pragma link C++ class HitR5560 + ;
+#pragma link C++ class HitIBM + ;
 #pragma link C++ class ClusterPlane + ;
 #pragma link C++ class ClusterDetector + ;
 #pragma link C++ class std::vector < ULong64_t> + ;
 #pragma link C++ class std::vector < Hit> + ;
 #pragma link C++ class std::vector < HitR5560> + ;
+#pragma link C++ class std::vector < HitIBM> + ;
 #pragma link C++ class std::vector < ClusterPlane> + ;
 #pragma link C++ class std::vector < ClusterDetector> + ;
 #pragma link C++ class RootFile + ;
