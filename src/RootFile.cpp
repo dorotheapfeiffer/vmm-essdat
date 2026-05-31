@@ -103,7 +103,7 @@ void RootFile::SaveDate(double the_seconds_start, std::string the_date_start,
   channelMapping.SetTitle(m_config.pChannelMapping.c_str());
   channelMapping.Write();
 
-  TString str_correction = Form("%f [s]", m_config.pTime0Correction);
+  TString str_correction = Form("%llu [s]", m_config.pTime0Correction);
   TNamed t0Correction;
   t0Correction.SetName("t0Correction");
   t0Correction.SetTitle(str_correction);
@@ -253,6 +253,13 @@ void RootFile::FillCalibHistos(uint16_t fec, uint8_t vmm, uint8_t ch, float adc,
   }
 }
 
+void RootFile::CreateCDTHistos() {
+  m_tree_hits = new TTree("hits", "hits");
+  m_tree_hits->SetDirectory(m_file);
+  m_tree_hits->Branch("hits", &m_hit_cdt);
+  return;
+}
+
 void RootFile::CreateIBMHistos() {
   m_tree_hits = new TTree("hits", "hits");
   m_tree_hits->SetDirectory(m_file);
@@ -315,6 +322,9 @@ RootFile::RootFile(Configuration &config) : m_config(config) {
   m_eventNr = 0;
   if (m_config.pDataFormat == 0x10) {
     CreateIBMHistos();
+  }
+  else if (m_config.pDataFormat == 0x60) {
+    CreateCDTHistos();
   }
   else if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
     CreateCAENHistos();
@@ -549,6 +559,10 @@ void RootFile::AddHits(HitIBM &&the_hit) {
   m_hits_ibm.emplace_back(the_hit);
 }
 
+void RootFile::AddHits(HitCDT &&the_hit) {
+  m_hits_cdt.emplace_back(the_hit);
+}
+
 void RootFile::SaveHits() {
   if (m_hits.size() > 0) {
     for (int n = 0; n < m_hits.size(); n++) {
@@ -578,6 +592,18 @@ void RootFile::SaveHits() {
       m_tree_hits->Fill();
     }
     m_hits_ibm.clear();
+  }
+  if (m_hits_cdt.size() > 0) {
+  	
+    std::sort(begin(m_hits_cdt), end(m_hits_cdt),
+              [](const HitCDT &t1, const HitCDT &t2) {
+                return t1.time < t2.time;
+              });
+    for (int n = 0; n < m_hits_cdt.size(); n++) {
+      m_hit_cdt = m_hits_cdt[n];
+      m_tree_hits->Fill();
+    }
+    m_hits_cdt.clear();
   }
 }
 
@@ -661,7 +687,7 @@ void RootFile::SaveClustersDetector(ClusterVectorDetector &&clusters_detector) {
 }
 
 void RootFile::SaveHistograms() {
-  if (m_config.pDataFormat >= 0x10 && m_config.pDataFormat <= 0x3C) {
+  if (m_config.pDataFormat >= 0x10 && m_config.pDataFormat <= 0x3C || m_config.pDataFormat == 0x60) {
     return;
   }
   for (auto const &h1 : m_TH1D) {

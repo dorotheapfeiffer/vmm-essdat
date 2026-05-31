@@ -68,6 +68,17 @@ struct HitIBM {
   double time;
 };
 
+struct HitCDT {
+  uint8_t ring;
+  uint8_t fen;
+  uint8_t om;
+  uint8_t uid;
+  uint8_t cathode;
+  uint8_t anode;
+  uint64_t pulse_time;
+  uint64_t time;
+};
+
 struct ClusterPlane {
   uint8_t det;
   uint8_t plane;

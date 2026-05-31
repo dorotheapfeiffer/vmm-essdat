@@ -50,6 +50,54 @@ Clusterer::Clusterer(Configuration &config, Statistics &stats)
 
 Clusterer::~Clusterer() { RootFile::Dispose(); }
 
+bool Clusterer::SaveHitsCDT(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
+                     uint8_t OM, uint8_t UID, uint8_t Cathode, uint8_t Anode, double pulseTime)  {
+                     
+ bool newData = false;
+  if (m_stats.GetFirstTriggerTimestamp(ringId * FENS_PER_RING + fenId) == 0) {
+    m_stats.SetFirstTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                     readoutTimestamp);
+  }
+  if (m_stats.GetMaxTriggerTimestamp(ringId * FENS_PER_RING + fenId) <
+      readoutTimestamp) {
+    m_stats.SetMaxTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                   readoutTimestamp);
+  }
+  double buffer_interval_ns = 10000000.0;
+  if (readoutTimestamp >=
+      m_stats.GetOldTriggerTimestamp(ringId * FENS_PER_RING + fenId) +
+          buffer_interval_ns) {
+    newData = true;
+  }
+
+  if (newData) {
+    m_rootFile->SaveHits();
+    m_stats.SetOldTriggerTimestamp(ringId * FENS_PER_RING + fenId,
+                                   readoutTimestamp);
+  }
+ 
+  m_hitNr++;
+  corryvreckan::Log::setSection("Clusterer");
+  LOG(TRACE) << m_hitNr;
+
+
+
+  HitCDT theHit;
+  theHit.ring = ringId;
+  theHit.fen = fenId;
+  theHit.om = OM;
+  theHit.uid = UID;
+  theHit.cathode = Cathode;
+  theHit.anode = Anode;
+  theHit.time = readoutTimestamp;
+  theHit.pulse_time = pulseTime;
+
+  m_rootFile->AddHits(std::move(theHit));
+  
+
+  	return true;                    
+}
+
 bool Clusterer::SaveHitsIBM(double readoutTimestamp, uint8_t ringId, uint8_t fenId, uint8_t type, uint32_t adc_raw, double pulseTime) {
  bool newData = false;
   if (m_stats.GetFirstTriggerTimestamp(ringId * FENS_PER_RING + fenId) == 0) {
@@ -1239,7 +1287,7 @@ bool Clusterer::ChooseClustersToBeMatched(std::pair<uint8_t, uint8_t> dp) {
 }
 
 void Clusterer::FinishAnalysis() {
-  if(m_config.pDataFormat  >= 0x40) {
+  if(m_config.pDataFormat  >= 0x40 && m_config.pDataFormat  <= 0x4C) {
     double ts = 0;
     for (auto const &fec : m_config.pFecs) {
       if (ts < m_stats.GetMaxTriggerTimestamp(fec)) {
@@ -1271,7 +1319,6 @@ void Clusterer::FinishAnalysis() {
   }
   else {
     m_rootFile->SaveHits();
-    
   }
   m_stats.PrintFECStats(m_config);
  

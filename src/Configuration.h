@@ -49,8 +49,7 @@ public:
 
   bool PrintUsage(const std::string &errorMessage, char *argv);
   bool CreateMapping();
-  bool CalculateTransform();
-  // bool GetAxes(std::pair<uint8_t, uint8_t> dp);
+ 
   bool GetDetectorPlane(std::pair<uint8_t, uint8_t> dp);
   //**************************************************************
   // BEGIN INPUT PARAMETERS
@@ -89,15 +88,6 @@ public:
   //   - plane 1 is at the right and goes from top (0) to bottom (255)
   std::map<std::pair<uint8_t, uint8_t>, uint8_t> pAxes{{{1, 0}, 0},
                                                        {{1, 1}, 0}};
-
-  std::vector<std::tuple<double, double, double>> pTranslation;
-  std::vector<std::tuple<double, double, double>> pScale;
-  std::vector<std::tuple<double, double, double>> pRotation;
-  std::vector<std::vector<std::string>> pTransform;
-  std::vector<std::tuple<double, double, double, double>> pTransformX;
-  std::vector<std::tuple<double, double, double, double>> pTransformY;
-  std::vector<std::tuple<double, double, double, double>> pTransformZ;
-
   std::vector<double> pMinClusterSize = {1.0};
   std::vector<double> pCoincidentClusterSize = {1.0};
   // Maximum time difference between strips in time sorted cluster (x or y)
@@ -152,14 +142,13 @@ public:
   std::map<std::pair<uint8_t, uint8_t>, uint32_t> p_DetPlane_idx;
   std::map<uint8_t, uint8_t> pDets;
   std::vector<uint16_t> pFecs;
-  double pTime0Correction = 0;
+  uint64_t pTime0Correction = 0;
 
   std::vector<uint8_t> pSaveHits;
   std::vector<uint8_t> pSaveClustersPlane;
   std::vector<uint8_t> pSaveClustersDetector;
 
   bool fFound = false;
-  bool vmmsFound = false;
   int pAlgo = 0;
   bool pTimeZero = false;
 

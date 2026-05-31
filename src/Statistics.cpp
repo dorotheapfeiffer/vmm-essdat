@@ -400,6 +400,9 @@ void Statistics::PrintClusterStats(Configuration &config) {
       cnt1 = m_stats_plane[std::make_pair(dp1, "ClusterCntPlane")][0];
     }
 
+	if(cnt == 0) {
+		continue;
+	}
   	LOG(INFO) << "****************************************";
   	LOG(INFO) << "Stats detector " << (int)det.first;
     LOG(INFO) << "****************************************";
@@ -541,7 +544,7 @@ void Statistics::StatsOutput(int n, long val, std::string stat, long cnt,
   } else {
     if (cnt0 > 0 && cnt1 > 0) {
       LOG(INFO) <<val << " (common cluster in detector, "
-                << std::setprecision(1) << (100 * (double)val / (double)cnt0)
+                << std::setprecision(1) << std::fixed << (100 * (double)val / (double)cnt0)
                 << " % plane 0, " << std::setprecision(1) << std::fixed
                 << (100 * (double)val / (double)cnt1) << " % plane 1)"
                ;

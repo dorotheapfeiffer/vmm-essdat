@@ -33,6 +33,7 @@
 #include <parser/CalibrationFile.h>
 #include <parser/R5560Parser.h>
 #include <parser/IBMParser.h>
+#include <parser/CDTParser.h>
 #include <parser/ReaderPcap.h>
 #include <parser/VMM3Parser.h>
 
@@ -49,9 +50,6 @@ int main(int argc, char **argv) {
 
   if (m_config.ParseCommandLine(argc, argv)) {
     if (!m_config.CreateMapping()) {
-      return -1;
-    }
-    if (!m_config.CalculateTransform()) {
       return -1;
     }
   } else {
@@ -105,6 +103,7 @@ int main(int argc, char **argv) {
   VMM3Parser *parser = new VMM3Parser();
   R5560Parser *parser_r5560 = new R5560Parser();
   IBMParser *parser_ibm = new IBMParser();
+  CDTParser *parser_cdt = new CDTParser();
 
   ReadoutParser readoutParser;
   CalibrationFile calfile(m_config.pCalFilename);     
@@ -123,11 +122,11 @@ int main(int argc, char **argv) {
   int rdsize;
   bool doContinue = true;
   long seqNumError = 0;
-  double pulseTime = 0;
+  uint64_t pulseTime = 0;
   uint64_t pulse_time_ns = 0;
   uint64_t trigger_time_ns = 0;
   double pulseIntensity = 0;
-  double t0_correction = m_config.pTime0Correction;
+  uint64_t t0_correction = m_config.pTime0Correction;
 
   while (doContinue &&
          (rdsize = pcap.read((char *)&buffer, sizeof(buffer))) != -1) {
@@ -152,13 +151,13 @@ int main(int argc, char **argv) {
       goodFrames++;
     }
     
-    double temp_pulseTime = 0;
+    uint64_t temp_pulseTime = 0;
     uint64_t temp_pulseTime_ns = 0;
     if (readoutParser.Packet.version == 0) {
       if (t0_correction == 0) {
         t0_correction = readoutParser.Packet.HeaderPtr0->PulseHigh;
       }
-
+	  
       temp_pulseTime =
           (readoutParser.Packet.HeaderPtr0->PulseHigh - t0_correction) *
               1.0E+09 +
@@ -182,10 +181,12 @@ int main(int argc, char **argv) {
     // Filter out pulse times that come directly after a valid pulse
     // time due to jitter
     double theTriggerTime = 0;
-    if (temp_pulseTime - pulseTime > 1.0E+06) {
+    if (temp_pulseTime - pulseTime > 0) {
       m_stats.IncrementCounter("NumberOfTriggers", STATISTIC_FEN);
+      //std::cout << temp_pulseTime << " " << pulseTime << std::endl;
       pulseTime = temp_pulseTime;
       pulse_time_ns = temp_pulseTime_ns;
+
       if (m_config.pUseBunchFile == true) {
         auto itStart =
             m_config.pMapTriggertimeIntensity.upper_bound(pulse_time_ns);
@@ -387,44 +388,90 @@ int main(int argc, char **argv) {
         }
       }
     }
-    else if (m_config.pDataFormat == 0x10 ) {
+    else if (m_config.pDataFormat == 0x10) {
       int hits = parser_ibm->parse(readoutParser.Packet.DataPtr,
                     readoutParser.Packet.DataLength);
       total_hits += hits;
       for (int i = 0; i < hits; i++) {
-      auto &hit = parser_ibm->Result[i];
-      uint16_t fenid =
-        static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
-      if (firstTime == 0) {
-        firstTime = hit.TimeHigh * 1.0E+09;
-      }
-
-      double complete_timestamp = 0;
-      if (t0_correction == 0) {
-        //  ESS time format use 64bit timestamp in nanoseconds
-        //  To be able to use double as type for timestamp calculation,
-        //  the timestamp has to be truncated to 52 bit
-        //  The easiest to have a relative timestamp with respect to the
-        //  start of the run
-        complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
-                  hit.TimeLow * m_config.pBCTime_ns * 0.5;
-      } else {
-        // If several files will be joined later, it is recommended to
-        // just remove the most significant bits of the 64 bit timestamp
-        complete_timestamp = hit.TimeHigh * 1.0E+09 -
-                  t0_correction * 1.0E+09 +
-                  hit.TimeLow * m_config.pBCTime_ns * 0.5;
-      }
-
-      m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
-      bool result = m_Clusterer->SaveHitsIBM(
-        complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
-        hit.Type, hit.ADC, pulseTime);
-      if (result == false ||
-        (total_hits >= m_config.nHits && m_config.nHits > 0)) {
-        doContinue = false;
-        break;
-      }
+		  auto &hit = parser_ibm->Result[i];
+		  uint16_t fenid =
+			static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
+		  if (firstTime == 0) {
+			firstTime = hit.TimeHigh * 1.0E+09;
+		  }
+	
+		  double complete_timestamp = 0;
+		  if (t0_correction == 0) {
+			//  ESS time format use 64bit timestamp in nanoseconds
+			//  To be able to use double as type for timestamp calculation,
+			//  the timestamp has to be truncated to 52 bit
+			//  The easiest to have a relative timestamp with respect to the
+			//  start of the run
+			complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
+					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
+		  } else {
+			// If several files will be joined later, it is recommended to
+			// just remove the most significant bits of the 64 bit timestamp
+			complete_timestamp = hit.TimeHigh * 1.0E+09 -
+					  t0_correction * 1.0E+09 +
+					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
+		  }
+	
+		  m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
+		  bool result = m_Clusterer->SaveHitsIBM(
+			complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
+			hit.Type, hit.ADC, pulseTime);
+		  if (result == false ||
+			(total_hits >= m_config.nHits && m_config.nHits > 0)) {
+			doContinue = false;
+			break;
+		  }
+    	}
+    }
+    //CDT DREAM
+    else if (m_config.pDataFormat == 0x60) {
+      int hits = parser_cdt->parse(readoutParser.Packet.DataPtr,
+                    readoutParser.Packet.DataLength);
+      total_hits += hits;
+      for (int i = 0; i < hits; i++) {
+		  auto &hit = parser_cdt->Result[i];
+		  uint16_t fenid =
+			static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
+		  if (firstTime == 0) {
+			firstTime = hit.TimeHigh * 1.0E+09;
+		  }
+		  
+		  if(hit.TimeLow >= 88052500) {
+		  	std::cout << "error: " << hit.TimeLow  << std::endl;
+		  }
+		  
+		  double complete_timestamp = 0;
+		  if (t0_correction == 0) {
+			//  ESS time format use 64bit timestamp in nanoseconds
+			//  To be able to use double as type for timestamp calculation,
+			//  the timestamp has to be truncated to 52 bit
+			//  The easiest to have a relative timestamp with respect to the
+			//  start of the run
+			complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
+					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
+		  } else {
+			// If several files will be joined later, it is recommended to
+			// just remove the most significant bits of the 64 bit timestamp
+			complete_timestamp = hit.TimeHigh * 1.0E+09 -
+					  t0_correction * 1.0E+09 +
+					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
+		  }
+	
+		  m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
+		  bool result = m_Clusterer->SaveHitsCDT(
+			complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
+			hit.OM, hit.UID, hit.Cathode, hit.Anode, pulseTime);
+		  if (result == false ||
+			(total_hits >= m_config.nHits && m_config.nHits > 0)) {
+			doContinue = false;
+			break;
+		  }
+		
     }
   }
 }

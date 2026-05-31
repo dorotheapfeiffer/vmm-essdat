@@ -44,7 +44,11 @@ public:
   bool SaveHitsIBM(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
                      uint8_t type, uint32_t adc_raw,
                      double pulseTime);
-                     
+  
+  bool SaveHitsCDT(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
+                     uint8_t OM, uint8_t UID, uint8_t Cathode, uint8_t Anode,
+                     double pulseTime);
+                                  
   // Analyzing and storing the hits
   bool AnalyzeHits(double readoutTimestamp, uint8_t fecId, uint8_t vmmId,
                    uint16_t chNo, uint16_t bcid, uint16_t tdc, uint16_t adc,
