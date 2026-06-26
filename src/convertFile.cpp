@@ -55,6 +55,9 @@ int main(int argc, char **argv) {
   } else {
     return -1;
   }
+  
+  corryvreckan::LogLevel log_level = corryvreckan::Log::getLevelFromString(m_config.pLogLevel);
+  corryvreckan::Log::setReportingLevel(log_level);
 
   timeStart = std::chrono::system_clock::now();
   uint64_t last_time = 0;

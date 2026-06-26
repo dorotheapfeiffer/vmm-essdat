@@ -243,7 +243,7 @@ bool Clusterer::AnalyzeHits(double readoutTimestamp, uint8_t fecId,
                             uint8_t vmmId, uint16_t chNo, uint16_t bcid,
                             uint16_t tdc, uint16_t adc, bool overThresholdFlag,
                             double chipTime, uint8_t geoId, double pulseTime,bool newFrame) {
-
+  corryvreckan::Log::setSection("Clusterer");
   AddPulseTime(pulseTime);
 
   int pos = m_config.pPositions[fecId][vmmId][chNo];

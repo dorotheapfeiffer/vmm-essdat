@@ -43,18 +43,15 @@ ReaderPcap::~ReaderPcap() {
 
 int ReaderPcap::open() {
   corryvreckan::Log::setSection("ReaderPcap");
-  LOG(TRACE) << "Before 1 ";
   char ErrorBuffer[PCAP_ERRBUF_SIZE];
   PcapHandle = pcap_open_offline(FileName.c_str(), ErrorBuffer);
   if (PcapHandle == nullptr) {
     return -1;
   }
-  LOG(TRACE) << "Before 2 ";
   if (pcap_compile(PcapHandle, &PcapFilter, FilterUdp, 1,
                    PCAP_NETMASK_UNKNOWN) == -1) {
     return -1;
   }
-    LOG(TRACE) << "Before 3 ";
 
   return 0;
 }

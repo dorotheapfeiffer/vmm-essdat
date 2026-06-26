@@ -83,6 +83,7 @@ add_library(vmm-essdat SHARED
 ${CMAKE_CURRENT_SOURCE_DIR}/src/log.cpp 
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/VMM3Parser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/IBMParser.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/src/parser/CDTParser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/R5560Parser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/ReadoutParser.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/CalibrationFile.cpp 

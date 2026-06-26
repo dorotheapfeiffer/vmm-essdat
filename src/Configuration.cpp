@@ -228,12 +228,13 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     if (strncmp(argv[i], "-f", 2) == 0) {
       fFound = true;
       pFileName = argv[i + 1];
-    } else if (strncmp(argv[i], "-log", 4) == 0) {
+    } 
+    else if (strncmp(argv[i], "-log", 4) == 0) {
       pLogLevel = argv[i + 1];
       auto it = find(pLogLevels.begin(), pLogLevels.end(), pLogLevel);
-	    if (it == pLogLevels.end()) {
-	  	  pLogLevel = "INFO";
-	    }   
+      if (it == pLogLevels.end()) {
+        pLogLevel = "INFO"; 
+      }
     } else if (strncmp(argv[i], "-bf", 3) == 0) {
       pUseBunchFile = true;
       pBunchFile = argv[i + 1];
