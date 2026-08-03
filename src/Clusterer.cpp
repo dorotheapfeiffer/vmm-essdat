@@ -1042,6 +1042,7 @@ int Clusterer::MatchClustersDetector(uint8_t det) {
 //====================================================================================================================
 
 void Clusterer::AnalyzeClustersPlane(std::pair<uint8_t, uint8_t> dp) {
+  LOG(TRACE) << "AnalyzeClustersPlane..";
   if (ChooseHitsToBeClustered(dp) == false && m_hits[dp].empty()) {
     return;
   }
@@ -1053,14 +1054,16 @@ void Clusterer::AnalyzeClustersPlane(std::pair<uint8_t, uint8_t> dp) {
 }
 
 void Clusterer::AnalyzeClustersDetector(uint8_t det) {
+  LOG(TRACE) << "AnalyzeClustersDetector..";
   int cnt = 0;
   auto dp0 = std::make_pair(det, 0);
   auto dp1 = std::make_pair(det, 1);
 
-  if (ChooseClustersToBeMatched(dp0) == false && m_clusters[dp0].empty()) {
+  if (m_config.GetDetectorPlane(dp0) == true && ChooseClustersToBeMatched(dp0) == false && m_clusters[dp0].empty()) {
     return;
   }
-  if (ChooseClustersToBeMatched(dp1) == false && m_clusters[dp1].empty()) {
+
+  if (m_config.GetDetectorPlane(dp1) == true && ChooseClustersToBeMatched(dp1) == false && m_clusters[dp1].empty()) {
     return;
   }
 
@@ -1287,6 +1290,7 @@ bool Clusterer::ChooseClustersToBeMatched(std::pair<uint8_t, uint8_t> dp) {
 }
 
 void Clusterer::FinishAnalysis() {
+  LOG(TRACE) << "Finish Analysis..";
   if(m_config.pDataFormat  >= 0x40 && m_config.pDataFormat  <= 0x4C) {
     double ts = 0;
     for (auto const &fec : m_config.pFecs) {

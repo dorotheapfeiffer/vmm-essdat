@@ -78,10 +78,10 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
 #endif
     Type = Packet.HeaderPtr0->CookieAndType >> 24;
 
-    if (Packet.HeaderPtr0->OutputQueue >= MaxOutputQueues) {
+    if (Packet.HeaderPtr0->OutputQueue >= MaxOutputQueues && Packet.HeaderPtr0->OutputQueue != 255) {
       LOG(WARNING) << "Output queue " << 
-             Packet.HeaderPtr0->OutputQueue << " exceeds max size: " 
-             << MaxOutputQueues;
+             (int)Packet.HeaderPtr0->OutputQueue << " exceeds max size: " 
+             << (int)MaxOutputQueues;
       Stats.ErrorOutputQueue++;
       return -ReadoutParser::EHEADER;
     }
@@ -147,10 +147,10 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
 #endif
     Type = Packet.HeaderPtr1->CookieAndType >> 24;
 
-    if (Packet.HeaderPtr1->OutputQueue >= MaxOutputQueues) {
+    if (Packet.HeaderPtr1->OutputQueue >= MaxOutputQueues && Packet.HeaderPtr1->OutputQueue != 255) {
       LOG(WARNING) << "Output queue " << 
-             Packet.HeaderPtr1->OutputQueue << " exceeds max size: " 
-             << MaxOutputQueues;
+             (int)Packet.HeaderPtr1->OutputQueue << " exceeds max size: " 
+             << (int)MaxOutputQueues;
       Stats.ErrorOutputQueue++;
       return -ReadoutParser::EHEADER;
     }
