@@ -5,7 +5,7 @@ import re
 import sys
 
 fileName = "./example_ibm.pcapng"
-
+#fileName = "./odin_cbm_mjc6.pcapng"
 try:	
 	args = ['../build/convertFile', '-f', fileName, '-df', '0x10', '-log', 'TRACE']	
 	subprocess.call(args)

@@ -521,7 +521,6 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
       largestTime = time1;
       largestADCTime = time1;
       largestADCPos = strip1;
-      LOG(TRACE) << "Detector " << (int)det << ", plane " << (int)plane << " cluster";
     }
 
     // Add members of a cluster, if it is either the beginning of a cluster,
@@ -533,8 +532,6 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
              m_config.pSpanClusterTime[m_config.pDets[dp.first]] &&
          largestTime - time1 <=
             m_config.pSpanClusterTime[m_config.pDets[dp.first]])) {
-          LOG(TRACE) << "\tstrip " << strip1 << ", time " 
-            << static_cast<unsigned long long>(time1) << ", adc " <<adc1;
       if (adc1 > adc2) {
         largestADCTime = time1;
         largestADCPos = strip1;
@@ -570,7 +567,8 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
         centerOfGravity2_ovTh += strip1 * adc1 * adc1;
         centerOfTime2_ovTh += time1 * adc1 * adc1;
       }
-
+      LOG(TRACE) << "\tstrip " << strip1 << ", time " 
+            << static_cast<unsigned long long>(m_config.pTime0Correction*1e+9+time1) << ", adc " <<adc1;
       vStrips.emplace_back(strip1);
       vTimes.emplace_back(time1);
       vADC.emplace_back(adc1);
@@ -657,18 +655,20 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
         clusterPlane.times = std::move(vTimes);
         clusterPlane.adcs = std::move(vADC);
 
-        m_cluster_id++;
-
-        LOG(TRACE) << "Cluster id: " << m_cluster_id;
+        
         clusterPlane.det = det;
         clusterPlane.plane = plane;
         if (m_config.pUseBunchFile == false ||
             (clusterPlane.bunch_intensity >= 1E+11 &&
              clusterPlane.bunch_intensity <= 1E+12)) {
-          m_clusters_new[dp].emplace_back(std::move(clusterPlane));
+            m_cluster_id++;
+
+            LOG(TRACE) << "Det:" << (int)det << ", plane: " <<(int)plane << ", Cluster id: " << m_cluster_id << "\n";
+            clusterCount++;
+            m_clusters_new[dp].emplace_back(std::move(clusterPlane));
         }
         m_stats.SetStatsPlane("ClusterCntPlane", dp, 0);
-        clusterCount++;
+
       }
       // Clear vectors
       vADC.clear();
@@ -676,6 +676,9 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
       vTimes.clear();
       // Strip that caused gap in cluster is added as first strip of new
       // cluster
+      LOG(TRACE) << "\tstrip " << strip1 << ", time " 
+        << static_cast<unsigned long long>(m_config.pTime0Correction*1e+9+time1) << ", adc " <<adc1;
+
       vStrips.emplace_back(strip1);
       vTimes.emplace_back(time1);
       vADC.emplace_back(adc1);
@@ -769,19 +772,20 @@ int Clusterer::ClusterByStrip(std::pair<uint8_t, uint8_t> dp,
     clusterPlane.strips = std::move(vStrips);
     clusterPlane.times = std::move(vTimes);
     clusterPlane.adcs = std::move(vADC);
-    m_cluster_id++;
-    LOG(TRACE) << "Cluster id: " << m_cluster_id;
+
     clusterPlane.det = det;
     clusterPlane.plane = plane;
 
     if (m_config.pUseBunchFile == false ||
         (clusterPlane.bunch_intensity >= 1E+11 &&
          clusterPlane.bunch_intensity <= 1E+12)) {
+        m_cluster_id++;
+        LOG(TRACE) << "Det:" << (int)det << ", plane: " <<(int)plane << ", Cluster id: " << m_cluster_id << "\n";
+        clusterCount++;
       m_clusters_new[dp].emplace_back(std::move(clusterPlane));
     }
     m_stats.SetStatsPlane("ClusterCntPlane", dp, 0);
 
-    clusterCount++;
   }
 
   return clusterCount;
@@ -1020,13 +1024,13 @@ int Clusterer::MatchClustersDetector(uint8_t det) {
       m_stats.SetStatsDetector("ClusterCntDetector", det, 0);
       clusterCount++;
       corryvreckan::Log::setSection("Clusterer");
-      LOG(TRACE) << "Common cluster " <<  (int)det;
-      LOG(TRACE) << "pos x/pos y: " << clusterDetector.pos0 << "/" << clusterDetector.pos0;
+      LOG(TRACE) << "Common cluster: det " <<  (int)det;
+      LOG(TRACE) << "pos x/pos y: " << clusterDetector.pos0 << "/" << clusterDetector.pos1;
       LOG(TRACE) << "time x/time y: " << static_cast<unsigned long long>(clusterDetector.time0) << "/"
             << static_cast<unsigned long long>(clusterDetector.time1);
       LOG(TRACE) << "adc x/adc y: " << clusterDetector.adc0 << "/" << clusterDetector.adc1;
       LOG(TRACE) << "size x/size y: " << clusterDetector.size0 << "/" << clusterDetector.size1;
-      LOG(TRACE) << "delta time planes: " << (int)clusterDetector.delta_plane_0_1;
+      LOG(TRACE) << "delta time planes: " << (int)clusterDetector.delta_plane_0_1 << " ns\n";
 
       if (m_config.pUseBunchFile == false ||
           (clusterDetector.bunch_intensity >= 1E+11 &&
