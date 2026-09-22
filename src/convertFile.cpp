@@ -22,6 +22,9 @@
 ****************************************************************************/
 
 #include <chrono>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -60,7 +63,6 @@ int main(int argc, char **argv) {
   corryvreckan::Log::setReportingLevel(log_level);
 
   timeStart = std::chrono::system_clock::now();
-  uint64_t last_time = 0;
 
   m_stats.CreateFECStats(m_config);
   m_stats.CreateClusterStats(m_config);
@@ -77,14 +79,14 @@ int main(int argc, char **argv) {
     m_config.pMapPulsetimeIntensity.clear();
     m_config.pMapTriggertimeIntensity.clear();
     if (bunchTree != nullptr) {
-      double psTime = 0;
+      int64_t psTime = 0;
       float psIntensity = 0;
-      double lastTime = 0;
+      int64_t lastTime = 0;
       bunchTree->SetBranchAddress(m_config.pBunchTimeVariable.c_str(), &psTime);
       bunchTree->SetBranchAddress(m_config.pBunchIntensityVariable.c_str(),
                                   &psIntensity);
-      int numTrigger = bunchTree->GetEntries();
-      for (int n = 0; n < numTrigger; n++) {
+      const Long64_t numTrigger = bunchTree->GetEntries();
+      for (Long64_t n = 0; n < numTrigger; ++n) {
         bunchTree->GetEntry(n);
         if (psTime > lastTime) {
           m_config.pMapTriggertimeIntensity.emplace(
@@ -99,7 +101,7 @@ int main(int argc, char **argv) {
       bunchFile = nullptr;
     }
   }
-  double firstTime = 0;
+
   char buffer[10000];
   Clusterer *m_Clusterer = new Clusterer(m_config, m_stats);
 
@@ -124,12 +126,12 @@ int main(int argc, char **argv) {
 
   int rdsize;
   bool doContinue = true;
-  long seqNumError = 0;
-  uint64_t pulseTime = 0;
-  uint64_t pulse_time_ns = 0;
-  uint64_t trigger_time_ns = 0;
+  int64_t seqNumError = 0;
+  int64_t pulse_time_ns = 0;
+  int64_t previous_pulse_time_ns = 0;
+  int64_t last_pulse_time_ns = 0;
   double pulseIntensity = 0;
-  uint64_t t0_correction = m_config.pTime0Correction;
+  int64_t t0_correction = m_config.pTime0Correction;
 
   while (doContinue &&
          (rdsize = pcap.read((char *)&buffer, sizeof(buffer))) != -1) {
@@ -137,8 +139,8 @@ int main(int argc, char **argv) {
       continue;
     }
 
-    int ret = readoutParser.validate((char *)&buffer, rdsize,
-                                     ReadoutParser::Loki4Amp);
+    ret = readoutParser.validate((char *)&buffer,
+                                 static_cast<uint32_t>(rdsize));
 
     if (seqNumError != readoutParser.Stats.ErrorSeqNum) {
       corryvreckan::Log::setSection("convertFile");
@@ -154,41 +156,34 @@ int main(int argc, char **argv) {
       goodFrames++;
     }
     
-    uint64_t temp_pulseTime = 0;
-    uint64_t temp_pulseTime_ns = 0;
     if (readoutParser.Packet.version == 0) {
-      if (t0_correction == 0) {
-        t0_correction = readoutParser.Packet.HeaderPtr0->PulseHigh;
+      if(t0_correction == -1) {
+        t0_correction = static_cast<int64_t>(readoutParser.Packet.HeaderPtr0->PulseHigh);
       }
-	  
-      temp_pulseTime =
-          (readoutParser.Packet.HeaderPtr0->PulseHigh - t0_correction) *
-              1.0E+09 +
-          readoutParser.Packet.HeaderPtr0->PulseLow * m_config.pBCTime_ns * 0.5;
-      temp_pulseTime_ns =
-          readoutParser.Packet.HeaderPtr0->PulseHigh * 1.0E+09 +
-          readoutParser.Packet.HeaderPtr0->PulseLow * m_config.pBCTime_ns * 0.5;
-    } else {
-      if (t0_correction == 0) {
-        t0_correction = readoutParser.Packet.HeaderPtr1->PulseHigh;
+      pulse_time_ns =
+          (static_cast<int64_t>(readoutParser.Packet.HeaderPtr0->PulseHigh) - t0_correction) * 1'000'000'000LL +
+          static_cast<int64_t>(std::llround(static_cast<double>(readoutParser.Packet.HeaderPtr0->PulseLow) * m_config.pESSTime_ns));
+      previous_pulse_time_ns =
+          (static_cast<int64_t>(readoutParser.Packet.HeaderPtr0->PrevPulseHigh) - t0_correction) * 1'000'000'000LL +
+          static_cast<int64_t>(std::llround(static_cast<double>(readoutParser.Packet.HeaderPtr0->PrevPulseLow) * m_config.pESSTime_ns));
+ 
+      } else {
+      if(t0_correction == -1) {
+        t0_correction = static_cast<int64_t>(readoutParser.Packet.HeaderPtr1->PulseHigh);
       }
-      temp_pulseTime =
-          (readoutParser.Packet.HeaderPtr1->PulseHigh - t0_correction) *
-              1.0E+09 +
-          readoutParser.Packet.HeaderPtr1->PulseLow * m_config.pBCTime_ns * 0.5;
-      temp_pulseTime_ns =
-          readoutParser.Packet.HeaderPtr1->PulseHigh * 1.0E+09 +
-          readoutParser.Packet.HeaderPtr1->PulseLow * m_config.pBCTime_ns * 0.5;
-    }
-    m_config.pTime0Correction = t0_correction;
-    // Filter out pulse times that come directly after a valid pulse
-    // time due to jitter
-    double theTriggerTime = 0;
-    if (temp_pulseTime - pulseTime > 0) {
+       pulse_time_ns =
+         (static_cast<int64_t>(readoutParser.Packet.HeaderPtr1->PulseHigh) - t0_correction) * 1'000'000'000LL +
+         static_cast<int64_t>(std::llround(static_cast<double>(readoutParser.Packet.HeaderPtr1->PulseLow) * m_config.pESSTime_ns));
+      
+       previous_pulse_time_ns =
+          (static_cast<int64_t>(readoutParser.Packet.HeaderPtr1->PrevPulseHigh) - t0_correction) * 1'000'000'000LL +
+          static_cast<int64_t>(std::llround(static_cast<double>(readoutParser.Packet.HeaderPtr1->PrevPulseLow) * m_config.pESSTime_ns));
+ 
+     }
+   
+    if (pulse_time_ns - last_pulse_time_ns > 0) {
       m_stats.IncrementCounter("NumberOfTriggers", STATISTIC_FEN);
-      //std::cout << temp_pulseTime << " " << pulseTime << std::endl;
-      pulseTime = temp_pulseTime;
-      pulse_time_ns = temp_pulseTime_ns;
+      last_pulse_time_ns = pulse_time_ns;
 
       if (m_config.pUseBunchFile == true) {
         auto itStart =
@@ -198,7 +193,6 @@ int main(int argc, char **argv) {
         int cnt = 0;
         if (itStart != itEnd) {
           for (auto it = itStart; it != itEnd; ++it) {
-            theTriggerTime = it->first;
             pulseIntensity = it->second;
             cnt++;
           }
@@ -208,47 +202,54 @@ int main(int argc, char **argv) {
               m_stats.IncrementCounter("NumberOfBunches_1E7_1E8",
                                        STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E7_1E8",
-                                       STATISTIC_FEN, pulseIntensity);
+                                       STATISTIC_FEN,
+                                       static_cast<uint64_t>(std::llround(pulseIntensity)));
             } else if (pulseIntensity >= 1.0E+8 && pulseIntensity < 1.0E+9) {
               m_stats.IncrementCounter("NumberOfBunches_1E8_1E9",
                                        STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E8_1E9",
-                                       STATISTIC_FEN, pulseIntensity);
+                                       STATISTIC_FEN,
+                                       static_cast<uint64_t>(std::llround(pulseIntensity)));
             } else if (pulseIntensity >= 1.0E+9 && pulseIntensity < 1.0E+10) {
               m_stats.IncrementCounter("NumberOfBunches_1E9_1E10",
                                        STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E9_1E10",
-                                       STATISTIC_FEN, pulseIntensity);
+                                       STATISTIC_FEN,
+                                       static_cast<uint64_t>(std::llround(pulseIntensity)));
             } else if (pulseIntensity >= 1.0E+10 && pulseIntensity < 1.0E+11) {
               m_stats.IncrementCounter("NumberOfBunches_1E10_1E11",
                                        STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E10_1E11",
-                                       STATISTIC_FEN, pulseIntensity);
+                                       STATISTIC_FEN,
+                                       static_cast<uint64_t>(std::llround(pulseIntensity)));
             } else if (pulseIntensity >= 1.0E+11 && pulseIntensity < 1.0E+12) {
               m_stats.IncrementCounter("NumberOfBunches_1E11_1E12",
                                        STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E11_1E12",
-                                       STATISTIC_FEN, pulseIntensity);
+                                       STATISTIC_FEN,
+                                       static_cast<uint64_t>(std::llround(pulseIntensity)));
             } else if (pulseIntensity >= 1.0E+12 && pulseIntensity < 1.0E+13) {
               m_stats.IncrementCounter("NumberOfBunches_1E12_1E13",
                                        STATISTIC_FEN);
               m_stats.IncrementCounter("IntensityOfBunches_1E12_1E13",
-                                       STATISTIC_FEN, pulseIntensity);
+                                       STATISTIC_FEN,
+                                       static_cast<uint64_t>(std::llround(pulseIntensity)));
             }
             m_config.pMapPulsetimeIntensity.emplace(
-                std::make_pair(pulseTime, pulseIntensity));
+                std::make_pair(pulse_time_ns, pulseIntensity));
           } else {
             m_stats.IncrementCounter("NumberOfDoubleMatchedTriggers",
                                      STATISTIC_FEN);
             m_config.pMapPulsetimeIntensity.emplace(
-                std::make_pair(pulseTime, 0));
+                std::make_pair(pulse_time_ns, 0));
           }
         } else {
           m_stats.IncrementCounter("NumberOfUnMatchedTriggers", STATISTIC_FEN);
-          m_config.pMapPulsetimeIntensity.emplace(std::make_pair(pulseTime, 0));
+          m_config.pMapPulsetimeIntensity.emplace(std::make_pair(pulse_time_ns, 0));
         }
       }
     }
+    
     // VMM
     // TREX 64 (0x40)
     // NMX 68 (0x44)
@@ -256,88 +257,70 @@ int main(int argc, char **argv) {
     // TBL MB 73 (0x49)
     // ESTIA 76 (0x4C)
     if (m_config.pDataFormat >= 0x40 && m_config.pDataFormat <= 0x4C) {
-      bool newFrame = true;
-      int hits = parser->parse(readoutParser.Packet.DataPtr,
-                               readoutParser.Packet.DataLength);
-      total_hits += hits;
-      for (int i = 0; i < hits; i++) {
+      const int64_t parsed_hits =
+          parser->parse(readoutParser.Packet.DataPtr,
+                        readoutParser.Packet.DataLength);
+      if (parsed_hits < 0) {
+        LOG(ERROR) << "VMM parser returned negative hit count: " << parsed_hits;
+        continue;
+      }
+      const std::size_t hits = static_cast<std::size_t>(parsed_hits);
+      total_hits += static_cast<uint64_t>(hits);
+      for (std::size_t i = 0; i < hits; ++i) {
         auto &hit = parser->Result[i];
-        uint16_t assisterId =
-            static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
-        if (firstTime == 0) {
-          firstTime = hit.TimeHigh;
-        }
-
-        double complete_timestamp = 0;
-        if (t0_correction == 0) {
-          //  ESS time format use 64bit timestamp in nanoseconds
-          //  To be able to use double as type for timestamp calculation,
-          //  the timestamp has to be truncated to 52 bit
-          //  The easiest to have a relative timestamp with respect to the
-          //  start of the run
-          complete_timestamp = (hit.TimeHigh - firstTime) * 1.0E+09 +
-                               hit.TimeLow * m_config.pBCTime_ns * 0.5;
-        } else {
-          // If several files will be joined later, it is recommended to
-          // just remove the most significant bits of the 64 bit timestamp
-          complete_timestamp = (hit.TimeHigh - t0_correction) * 1.0E+09 +
-                               hit.TimeLow * m_config.pBCTime_ns * 0.5;
-        }
-
+        const uint8_t assisterId = static_cast<uint8_t>(
+            static_cast<uint16_t>(hit.RingId / 2) *
+                static_cast<uint16_t>(FENS_PER_RING) +
+            static_cast<uint16_t>(hit.FENId));
+     
+        int64_t complete_timestamp = 
+         (static_cast<int64_t>(hit.TimeHigh) - t0_correction) * 1'000'000'000LL +
+         static_cast<int64_t>(std::llround(static_cast<double>(hit.TimeLow) * m_config.pESSTime_ns));
+        
         uint16_t adc = hit.OTADC & 0x03ff;
         bool overThreshold = hit.OTADC & 0x8000;
 
         m_stats.IncrementCounter("ParserDataReadouts", assisterId, 1);
-        auto calib = calfile.getCalibration(assisterId, hit.VMM, hit.Channel);
-        double chiptime_corrected =
-            (1.5 * m_config.pBCTime_ns -
-             static_cast<double>(hit.TDC) * static_cast<double>(m_config.pTAC) /
-                 255 -
-             calib.time_offset) *
-            calib.time_slope;
+        auto calib = calfile.getCalibration(hit.RingId, hit.FENId, hit.VMM, hit.Channel);
+
+        int64_t time_without_calib = 
+         static_cast<int64_t>(std::llround(
+          1.5 * m_config.pBCTime_ns - static_cast<double>(hit.TDC) * static_cast<double>(m_config.pTAC) / 255.0
+        ));
+
+        int64_t time_with_calib = 
+         static_cast<int64_t>(std::llround(
+          (1.5 * m_config.pBCTime_ns - static_cast<double>(hit.TDC) * static_cast<double>(m_config.pTAC) / 255.0 - calib.time_offset)/calib.time_slope
+        ));
 
         if (calib.adc_slope == 0) {
           LOG(TRACE) << "Error in calibration file: adc_slope correction for assister " << (int)assisterId << ", chip " << (int)hit.VMM
                     << ", channel " << (int)hit.Channel
                     << " is 0!"; 
+          calib.adc_slope = 1.0;
+          calib.adc_offset = 0.0;
         }
-        int corrected_adc = (adc - calib.adc_offset) * calib.adc_slope;
-
-        if (corrected_adc > 1023) {
-         	LOG(TRACE) << "ADC value " << adc << " after correction " << corrected_adc << ", larger than 1023!";
-          corrected_adc = 1023;
-        } else if (corrected_adc < 0) {
-           LOG(TRACE) << "ADC value " << adc << " after correction " << corrected_adc << ", smaller than 0!";
-          corrected_adc = 0;
+        int64_t corrected_adc_value = static_cast<int64_t>(std::llround(
+            (static_cast<double>(adc) - calib.adc_offset) * calib.adc_slope));
+        if (corrected_adc_value > 1023) {
+          LOG(TRACE) << "ADC value " << adc << " after correction "
+                     << corrected_adc_value << ", larger than 1023!";
+          corrected_adc_value = 1023;
+        } else if (corrected_adc_value < 0) {
+          LOG(TRACE) << "ADC value " << adc << " after correction "
+                     << corrected_adc_value << ", smaller than 0!";
+          corrected_adc_value = 0;
         }
-        double timewalk_correction =
-            calib.timewalk_d +
-            (calib.timewalk_a - calib.timewalk_d) /
-                (1 + pow(corrected_adc / calib.timewalk_c, calib.timewalk_b));
-
-        double corrected_time = chiptime_corrected - timewalk_correction;
-
-        double time_without_calib =
-            (1.5 * m_config.pBCTime_ns -
-             static_cast<double>(hit.TDC) * static_cast<double>(m_config.pTAC) /
-                 255.0);
-
-        double time_with_calib =
-            (1.5 * m_config.pBCTime_ns -
-             static_cast<double>(hit.TDC) * static_cast<double>(m_config.pTAC) /
-                 255.0 -
-             calib.time_offset) *
-            calib.time_slope;
-
+        const uint16_t corrected_adc =
+            static_cast<uint16_t>(corrected_adc_value);
         m_Clusterer->FillCalibHistos(assisterId, hit.VMM, hit.Channel, adc,
                                      corrected_adc, time_without_calib,
                                      time_with_calib);
 
         bool result = m_Clusterer->AnalyzeHits(
             complete_timestamp, assisterId, hit.VMM, hit.Channel, hit.BC,
-            hit.TDC, static_cast<uint16_t>(corrected_adc), overThreshold != 0,
-            corrected_time, hit.GEO, pulseTime, newFrame);
-        newFrame = false;
+            hit.TDC, corrected_adc, overThreshold,
+            time_with_calib, hit.GEO, pulse_time_ns, previous_pulse_time_ns);
         if (result == false ||
             (total_hits >= m_config.nHits && m_config.nHits > 0)) {
           doContinue = false;
@@ -351,39 +334,31 @@ int main(int argc, char **argv) {
       //  Miracles 0x38 (56)
       //  CSPEC 0x3C (60)
     } else if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
-      int hits = parser_r5560->parse(readoutParser.Packet.DataPtr,
-                                     readoutParser.Packet.DataLength);
-      total_hits += hits;
-      for (int i = 0; i < hits; i++) {
+      const int64_t parsed_hits =
+          parser_r5560->parse(readoutParser.Packet.DataPtr,
+                       readoutParser.Packet.DataLength);
+      if (parsed_hits < 0) {
+        LOG(ERROR) << "R5560 parser returned negative hit count: " << parsed_hits;
+        continue;
+      }
+      const std::size_t hits = static_cast<std::size_t>(parsed_hits);
+      total_hits += static_cast<uint64_t>(hits);
+      for (std::size_t i = 0; i < hits; ++i) {
         auto &hit = parser_r5560->Result[i];
-        uint16_t fenid =
-            static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
-        if (firstTime == 0) {
-          firstTime = hit.TimeHigh * 1.0E+09;
-        }
+        const uint16_t fenid =
+            static_cast<uint16_t>(hit.RingId / 2) *
+                static_cast<uint16_t>(FENS_PER_RING) +
+            static_cast<uint16_t>(hit.FENId);
 
-        double complete_timestamp = 0;
-        if (t0_correction == 0) {
-          //  ESS time format use 64bit timestamp in nanoseconds
-          //  To be able to use double as type for timestamp calculation,
-          //  the timestamp has to be truncated to 52 bit
-          //  The easiest to have a relative timestamp with respect to the
-          //  start of the run
-          complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
-                               hit.TimeLow * m_config.pBCTime_ns * 0.5;
-        } else {
-          // If several files will be joined later, it is recommended to
-          // just remove the most significant bits of the 64 bit timestamp
-          complete_timestamp = hit.TimeHigh * 1.0E+09 -
-                               t0_correction * 1.0E+09 +
-                               hit.TimeLow * m_config.pBCTime_ns * 0.5;
-        }
+        int64_t complete_timestamp = 
+         (static_cast<int64_t>(hit.TimeHigh) - t0_correction) * 1'000'000'000LL +
+         static_cast<int64_t>(std::llround(static_cast<double>(hit.TimeLow) * m_config.pESSTime_ns));
 
-        m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
+         m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
         bool result = m_Clusterer->SaveHitsR5560(
             complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
             hit.Group, hit.AmplitudeA, hit.AmplitudeB, hit.AmplitudeC,
-            hit.AmplitudeD, hit.OM, hit.Counter, pulseTime);
+            hit.AmplitudeD, hit.OM, hit.Counter, pulse_time_ns, previous_pulse_time_ns);
         if (result == false ||
             (total_hits >= m_config.nHits && m_config.nHits > 0)) {
           doContinue = false;
@@ -392,38 +367,31 @@ int main(int argc, char **argv) {
       }
     }
     else if (m_config.pDataFormat == 0x10) {
-      int hits = parser_ibm->parse(readoutParser.Packet.DataPtr,
-                    readoutParser.Packet.DataLength);
-      total_hits += hits;
-      for (int i = 0; i < hits; i++) {
+      const int64_t parsed_hits =
+          parser_ibm->parse(readoutParser.Packet.DataPtr,
+                       readoutParser.Packet.DataLength);
+      if (parsed_hits < 0) {
+        LOG(ERROR) << "IBM parser returned negative hit count: " << parsed_hits;
+        continue;
+      }
+      const std::size_t hits = static_cast<std::size_t>(parsed_hits);
+      total_hits += static_cast<uint64_t>(hits);
+      for (std::size_t i = 0; i < hits; ++i) {
 		  auto &hit = parser_ibm->Result[i];
-		  uint16_t fenid =
-			static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
-		  if (firstTime == 0) {
-			firstTime = hit.TimeHigh * 1.0E+09;
-		  }
-	
-		  double complete_timestamp = 0;
-		  if (t0_correction == 0) {
-			//  ESS time format use 64bit timestamp in nanoseconds
-			//  To be able to use double as type for timestamp calculation,
-			//  the timestamp has to be truncated to 52 bit
-			//  The easiest to have a relative timestamp with respect to the
-			//  start of the run
-			complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
-					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
-		  } else {
-			// If several files will be joined later, it is recommended to
-			// just remove the most significant bits of the 64 bit timestamp
-			complete_timestamp = hit.TimeHigh * 1.0E+09 -
-					  t0_correction * 1.0E+09 +
-					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
-		  }
-	
+          const uint16_t fenid =
+              static_cast<uint16_t>(hit.RingId / 2) *
+                  static_cast<uint16_t>(FENS_PER_RING) +
+              static_cast<uint16_t>(hit.FENId);
+		
+		  int64_t complete_timestamp = 
+      (static_cast<int64_t>(hit.TimeHigh) - t0_correction) * 1'000'000'000LL +
+      static_cast<int64_t>(std::llround(static_cast<double>(hit.TimeLow) * m_config.pESSTime_ns));
+
 		  m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
 		  bool result = m_Clusterer->SaveHitsIBM(
 			complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
-			hit.Type, hit.ADC, pulseTime);
+            static_cast<uint8_t>(hit.Type), hit.ADC, pulse_time_ns,
+            previous_pulse_time_ns);
 		  if (result == false ||
 			(total_hits >= m_config.nHits && m_config.nHits > 0)) {
 			doContinue = false;
@@ -433,42 +401,31 @@ int main(int argc, char **argv) {
     }
     //CDT DREAM
     else if (m_config.pDataFormat == 0x60) {
-      int hits = parser_cdt->parse(readoutParser.Packet.DataPtr,
-                    readoutParser.Packet.DataLength);
-      total_hits += hits;
-      for (int i = 0; i < hits; i++) {
+      const int64_t parsed_hits =
+          parser_cdt->parse(readoutParser.Packet.DataPtr,
+                       readoutParser.Packet.DataLength);
+      if (parsed_hits < 0) {
+        LOG(ERROR) << "CDT parser returned negative hit count: " << parsed_hits;
+        continue;
+      }
+      const std::size_t hits = static_cast<std::size_t>(parsed_hits);
+      total_hits += static_cast<uint64_t>(hits);
+      for (std::size_t i = 0; i < hits; ++i) {
 		  auto &hit = parser_cdt->Result[i];
-		  uint16_t fenid =
-			static_cast<uint8_t>(hit.RingId / 2) * FENS_PER_RING + hit.FENId;
-		  if (firstTime == 0) {
-			firstTime = hit.TimeHigh * 1.0E+09;
-		  }
+          const uint16_t fenid =
+              static_cast<uint16_t>(hit.RingId / 2) *
+                  static_cast<uint16_t>(FENS_PER_RING) +
+              static_cast<uint16_t>(hit.FENId);
 		  
-		  if(hit.TimeLow >= 88052500) {
-		  	std::cout << "error: " << hit.TimeLow  << std::endl;
-		  }
-		  
-		  double complete_timestamp = 0;
-		  if (t0_correction == 0) {
-			//  ESS time format use 64bit timestamp in nanoseconds
-			//  To be able to use double as type for timestamp calculation,
-			//  the timestamp has to be truncated to 52 bit
-			//  The easiest to have a relative timestamp with respect to the
-			//  start of the run
-			complete_timestamp = hit.TimeHigh * 1.0E+09 - firstTime +
-					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
-		  } else {
-			// If several files will be joined later, it is recommended to
-			// just remove the most significant bits of the 64 bit timestamp
-			complete_timestamp = hit.TimeHigh * 1.0E+09 -
-					  t0_correction * 1.0E+09 +
-					  hit.TimeLow * m_config.pBCTime_ns * 0.5;
-		  }
+      int64_t complete_timestamp = 
+         (static_cast<int64_t>(hit.TimeHigh) - t0_correction) * 1'000'000'000LL +
+         static_cast<int64_t>(std::llround(static_cast<double>(hit.TimeLow) * m_config.pESSTime_ns));
+
 	
 		  m_stats.IncrementCounter("ParserDataReadouts", fenid, 1);
 		  bool result = m_Clusterer->SaveHitsCDT(
 			complete_timestamp, static_cast<uint8_t>(hit.RingId / 2), hit.FENId,
-			hit.OM, hit.UID, hit.Cathode, hit.Anode, pulseTime);
+			hit.OM, hit.UID, hit.Cathode, hit.Anode, pulse_time_ns, previous_pulse_time_ns);
 		  if (result == false ||
 			(total_hits >= m_config.nHits && m_config.nHits > 0)) {
 			doContinue = false;
@@ -482,68 +439,72 @@ int main(int argc, char **argv) {
   m_Clusterer->SaveDate(pcap.firstPacketSeconds, pcap.firstPacketDate,
                         pcap.lastPacketSeconds, pcap.lastPacketDate,
                         m_stats.GetCounter("NumberOfTriggers", STATISTIC_FEN));
+
+  const auto counterToUint64 = [](int64_t value) -> uint64_t {
+    return value > 0 ? static_cast<uint64_t>(value) : 0ULL;
+  };
   m_stats.IncrementCounter("ErrorBuffer", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorBuffer);
+                           counterToUint64(readoutParser.Stats.ErrorBuffer));
   m_stats.IncrementCounter("ErrorSize", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorSize);
+                           counterToUint64(readoutParser.Stats.ErrorSize));
   m_stats.IncrementCounter("ErrorVersion", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorVersion);
+                           counterToUint64(readoutParser.Stats.ErrorVersion));
   m_stats.IncrementCounter("ErrorCookie", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorCookie);
+                           counterToUint64(readoutParser.Stats.ErrorCookie));
   m_stats.IncrementCounter("ErrorPad", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorPad);
+                           counterToUint64(readoutParser.Stats.ErrorPad));
   m_stats.IncrementCounter("ErrorOutputQueue", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorOutputQueue);
+                           counterToUint64(readoutParser.Stats.ErrorOutputQueue));
   m_stats.IncrementCounter("ErrorTypeSubType", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorTypeSubType);
+                           counterToUint64(readoutParser.Stats.ErrorTypeSubType));
   m_stats.IncrementCounter("ErrorSeqNum", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorSeqNum);
+                           counterToUint64(readoutParser.Stats.ErrorSeqNum));
   m_stats.IncrementCounter("ErrorTimeHigh", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorTimeHigh);
+                           counterToUint64(readoutParser.Stats.ErrorTimeHigh));
   m_stats.IncrementCounter("ErrorTimeFrac", STATISTIC_FEN,
-                           readoutParser.Stats.ErrorTimeFrac);
+                           counterToUint64(readoutParser.Stats.ErrorTimeFrac));
   m_stats.IncrementCounter("HeartBeats", STATISTIC_FEN,
-                           readoutParser.Stats.HeartBeats);
+                           counterToUint64(readoutParser.Stats.HeartBeats));
   m_stats.IncrementCounter("GoodFrames", STATISTIC_FEN, goodFrames);
   m_stats.IncrementCounter("BadFrames", STATISTIC_FEN, badFrames);
   m_stats.IncrementCounter("TotalFrames", STATISTIC_FEN, pcappackets);
 
   m_stats.IncrementCounter("ParserErrorSize", STATISTIC_FEN,
-                           parser->Stats.ErrorSize);
+                           counterToUint64(parser->Stats.ErrorSize));
   m_stats.IncrementCounter("ParserErrorRing", STATISTIC_FEN,
-                           parser->Stats.ErrorRing);
+                           counterToUint64(parser->Stats.ErrorRing));
   m_stats.IncrementCounter("ParserErrorFEN", STATISTIC_FEN,
-                           parser->Stats.ErrorFEN);
+                           counterToUint64(parser->Stats.ErrorFEN));
   m_stats.IncrementCounter("ParserErrorDataLength", STATISTIC_FEN,
-                           parser->Stats.ErrorDataLength);
+                           counterToUint64(parser->Stats.ErrorDataLength));
   m_stats.IncrementCounter("ParserErrorTimeFrac", STATISTIC_FEN,
-                           parser->Stats.ErrorTimeFrac);
+                           counterToUint64(parser->Stats.ErrorTimeFrac));
   m_stats.IncrementCounter("ParserErrorBC", STATISTIC_FEN,
-                           parser->Stats.ErrorBC);
+                           counterToUint64(parser->Stats.ErrorBC));
   m_stats.IncrementCounter("ParserErrorADC", STATISTIC_FEN,
-                           parser->Stats.ErrorADC);
+                           counterToUint64(parser->Stats.ErrorADC));
   m_stats.IncrementCounter("ParserErrorVMM", STATISTIC_FEN,
-                           parser->Stats.ErrorVMM);
+                           counterToUint64(parser->Stats.ErrorVMM));
   m_stats.IncrementCounter("ParserErrorChannel", STATISTIC_FEN,
-                           parser->Stats.ErrorChannel);
+                           counterToUint64(parser->Stats.ErrorChannel));
   m_stats.IncrementCounter("ParserReadouts", STATISTIC_FEN,
-                           parser->Stats.Readouts);
+                           counterToUint64(parser->Stats.Readouts));
   m_stats.IncrementCounter("ParserCalibReadouts", STATISTIC_FEN,
-                           parser->Stats.CalibReadouts);
+                           counterToUint64(parser->Stats.CalibReadouts));
   m_stats.IncrementCounter("ParserDataReadouts", STATISTIC_FEN,
-                           parser->Stats.DataReadouts);
+                           counterToUint64(parser->Stats.DataReadouts));
   m_stats.IncrementCounter("ParserOverThreshold", STATISTIC_FEN,
-                           parser->Stats.OverThreshold);
+                           counterToUint64(parser->Stats.OverThreshold));
   m_Clusterer->FinishAnalysis();
 
   delete m_Clusterer;
 
   timeEnd = std::chrono::system_clock::now();
 
-  int elapsed_seconds =
+  const int64_t elapsed_ms =
       std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart)
           .count();
-  int hit_size = 160;
+  uint64_t hit_size = 160;
   if (m_config.pDataFormat >= 0x30 && m_config.pDataFormat <= 0x3C) {
     hit_size = 192;
   }
@@ -551,15 +512,23 @@ int main(int argc, char **argv) {
   LOG(INFO) << "****************************************";
   LOG(INFO) << "Stats (analysis):";
   LOG(INFO) << "****************************************";
-  LOG(INFO) << "Analysis time: " << std::setprecision(1) << std::fixed <<
-    elapsed_seconds << " ms";
-  LOG(INFO) << "Hit rate: " << std::scientific <<
-    static_cast < double > (1000 * total_hits / elapsed_seconds) <<
-    " hit/s";
-  LOG(INFO) << "Data rate: " << std::scientific <<
-    static_cast < double > (1000 * total_hits * hit_size /
-      elapsed_seconds) <<
-    " bit/s";
+  LOG(INFO) << "Analysis time: " << std::setprecision(1) << std::fixed
+            << static_cast<double>(elapsed_ms) << " ms";
+
+  if (elapsed_ms > 0) {
+    const double elapsed_ms_d = static_cast<double>(elapsed_ms);
+    const double hit_rate =
+        1000.0 * static_cast<double>(total_hits) / elapsed_ms_d;
+    const double data_rate =
+        1000.0 * static_cast<double>(total_hits) *
+        static_cast<double>(hit_size) / elapsed_ms_d;
+
+    LOG(INFO) << "Hit rate: " << std::scientific << hit_rate << " hit/s";
+    LOG(INFO) << "Data rate: " << std::scientific << data_rate << " bit/s";
+  } else {
+    LOG(INFO) << "Hit rate: n/a (analysis time < 1 ms)";
+    LOG(INFO) << "Data rate: n/a (analysis time < 1 ms)";
+  }
   LOG(INFO) << "****************************************";
   
     if (m_config.pUseBunchFile == true) {    

@@ -122,7 +122,8 @@ public:
   std::string pCalFilename = "";
   std::string pInfo = "";
 
-  double pBCTime_ns = 22.713721927259;
+  double pBCTime_ns = 2E+9 / 88'052'496.0;
+  double pESSTime_ns = 1E+9 / 88'052'496.0;
   double pOffsetPeriod = 4096.0 * pBCTime_ns;
 
   std::map<std::tuple<uint8_t, uint8_t>, int> pChannels;
@@ -142,7 +143,7 @@ public:
   std::map<std::pair<uint8_t, uint8_t>, uint32_t> p_DetPlane_idx;
   std::map<uint8_t, uint8_t> pDets;
   std::vector<uint16_t> pFecs;
-  uint64_t pTime0Correction = 0;
+  int64_t pTime0Correction = 0;
 
   std::vector<uint8_t> pSaveHits;
   std::vector<uint8_t> pSaveClustersPlane;
@@ -160,10 +161,10 @@ public:
   bool pUseBunchFile = false;
   long pBufferInterval_ns = 10000000000.0;
   int pPositions[NUM_FENS + 1][16][64];
-  int pDetectors[NUM_FENS + 1][16];
-  int pPlanes[NUM_FENS + 1][16];
-  std::map<double, double> pMapPulsetimeIntensity;
-  std::map<double, double> pMapTriggertimeIntensity;
+  int16_t pDetectors[NUM_FENS + 1][16];
+  int16_t pPlanes[NUM_FENS + 1][16];
+  std::map<int64_t, double> pMapPulsetimeIntensity;
+  std::map<int64_t, double> pMapTriggertimeIntensity;
 
   std::string pLogLevel = "INFO";
   std::vector<std::string> pLogLevels = {"TRACE", "DEBUG", "INFO", "STATUS", "WARNING", "ERROR", "FATAL"};

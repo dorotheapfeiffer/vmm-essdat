@@ -13,7 +13,7 @@
 
 
 // Assume we start after the Common PacketHeader
-int R5560Parser::parse(const char *Buffer, unsigned int Size) {
+int64_t R5560Parser::parse(const char *Buffer, unsigned int Size) {
   corryvreckan::Log::setSection("R5560Parser");
   Result.clear();
   uint32_t GoodReadouts{0};

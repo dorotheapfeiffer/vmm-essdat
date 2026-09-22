@@ -1,28 +1,13 @@
-/***************************************************************************
-**  vmm-essdat
-**  Data analysis program for ESS RMM data (VMM3a, CAEN R5560, I-BM)
-**
-**  This program is free software: you can redistribute it and/or modify
-**  it under the terms of the GNU General Public License as published by
-**  the Free Software Foundation, either version 3 of the License, or
-**  (at your option) any later version.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program.  If not, see http://www.gnu.org/licenses/.
-**
-****************************************************************************
-**  Contact: dorothea.pfeiffer@cern.ch
-**  Date: 12.10.2025
-**  Version: 1.0.0
-****************************************************************************
-**
-**  vmm-essdat
-**  Statistics.h
-**
-****************************************************************************/
-
 #pragma once
+
 #include "Configuration.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
 class Statistics {
 public:
@@ -33,63 +18,106 @@ public:
   void CreateFECStats(Configuration &config);
   void CreatePCAPStats(Configuration &config);
 
-  long GetStatsDetector(std::string stats, uint8_t det, int n);
-  void SetStatsDetector(std::string stats, uint8_t det, double value);
-  long GetStatsPlane(std::string stats, std::pair<uint8_t, uint8_t> dp, int n);
-  void SetStatsPlane(std::string stats, std::pair<uint8_t, uint8_t> dp,
+  uint64_t GetStatsDetector(const std::string &stats,
+                            uint8_t det,
+                            std::size_t n);
+
+  void SetStatsDetector(const std::string &stats,
+                        uint8_t det,
+                        double value);
+
+  uint64_t GetStatsPlane(const std::string &stats,
+                         std::pair<uint8_t, uint8_t> dp,
+                         std::size_t n);
+
+  void SetStatsPlane(const std::string &stats,
+                     std::pair<uint8_t, uint8_t> dp,
                      double value);
 
-  void IncrementCounter(std::string error, uint16_t fecId,
+  void IncrementCounter(const std::string &error,
+                        uint16_t fecId,
                         uint64_t increment = 1);
-  long GetCounter(std::string error, uint16_t fecId);
 
-  double GetOldTriggerTimestamp(uint16_t fecId);
-  void SetOldTriggerTimestamp(uint16_t fecId, double readoutTimestamp);
-  double GetFirstTriggerTimestamp(uint16_t fecId);
-  void SetFirstTriggerTimestamp(uint16_t fecId, double readoutTimestamp);
-  double GetMaxTriggerTimestamp(uint16_t fecId);
-  void SetMaxTriggerTimestamp(uint16_t fecId, double readoutTimestamp);
+  uint64_t GetCounter(const std::string &error,
+                      uint16_t fecId);
+
+  int64_t GetOldTriggerTimestamp(uint16_t fecId);
+  void SetOldTriggerTimestamp(uint16_t fecId,
+                              int64_t readoutTimestamp);
+
+  int64_t GetFirstTriggerTimestamp(uint16_t fecId);
+  void SetFirstTriggerTimestamp(uint16_t fecId,
+                                int64_t readoutTimestamp);
+
+  int64_t GetMaxTriggerTimestamp(uint16_t fecId);
+  void SetMaxTriggerTimestamp(uint16_t fecId,
+                              int64_t readoutTimestamp);
+
   uint64_t GetLastFrameCounter(uint16_t fecId);
-  void SetLastFrameCounter(uint16_t fecId, uint64_t frameCounter);
+  void SetLastFrameCounter(uint16_t fecId,
+                           uint64_t frameCounter);
 
-  double GetLowestCommonTriggerTimestampDet(uint8_t det);
-  void SetLowestCommonTriggerTimestampDet(uint8_t det, double val);
-  double GetLowestCommonTriggerTimestampPlane(std::pair<uint8_t, uint8_t> dp);
-  void SetLowestCommonTriggerTimestampPlane(std::pair<uint8_t, uint8_t> dp,
-                                            double val);
+  int64_t GetLowestCommonTriggerTimestampDet(uint8_t det);
+  void SetLowestCommonTriggerTimestampDet(uint8_t det,
+                                          int64_t val);
+
+  int64_t GetLowestCommonTriggerTimestampPlane(
+      std::pair<uint8_t, uint8_t> dp);
+
+  void SetLowestCommonTriggerTimestampPlane(
+      std::pair<uint8_t, uint8_t> dp,
+      int64_t val);
 
   void PrintClusterStats(Configuration &config);
   void PrintFECStats(Configuration &config);
 
-  void StatsOutput(int n, long val, std::string stat, long cnt, long cnt0 = 0,
-                   long cnt1 = 0);
+  void StatsOutput(std::size_t n,
+                   uint64_t val,
+                   const std::string &stat,
+                   uint64_t cnt,
+                   uint64_t cnt0 = 0,
+                   uint64_t cnt1 = 0);
 
 private:
-  double m_acq_time;
+  double m_acq_time = 0.0;
+
   uint64_t cntTriggers = 0;
-  std::map<std::pair<std::pair<uint8_t, uint8_t>, std::string>,
-           std::vector<long>>
+
+  // Histogram/statistics counters
+  std::map<
+      std::pair<std::pair<uint8_t, uint8_t>, std::string>,
+      std::vector<uint64_t>>
       m_stats_plane;
-  std::map<std::pair<uint8_t, std::string>, std::vector<long>> m_stats_detector;
+
+  std::map<
+      std::pair<uint8_t, std::string>,
+      std::vector<uint64_t>>
+      m_stats_detector;
+
   std::vector<std::string> m_stats_plane_names;
   std::vector<std::string> m_stats_detector_names;
+
   std::map<std::string, double> m_factors;
   std::map<std::string, double> m_limits;
   std::map<std::string, std::string> m_units;
-  std::map<std::pair<uint8_t, std::string>, long> m_counters;
+
+  std::map<std::pair<uint16_t, std::string>, uint64_t> m_counters;
   std::vector<std::string> m_counter_names;
 
   // per plane
-  std::map<std::pair<uint8_t, uint8_t>, double>
+  std::map<std::pair<uint8_t, uint8_t>, int64_t>
       m_lowestCommonTriggerTimestamp_plane;
-  // per detector
-  std::map<uint8_t, double> m_lowestCommonTriggerTimestamp_det;
-  // per FEC
-  std::map<uint8_t, double> m_deltaTriggerTimestamp;
-  std::map<uint8_t, double> m_oldTriggerTimestamp;
-  std::map<uint8_t, double> m_maxTriggerTimestamp;
-  std::map<uint8_t, double> m_firstTriggerTimestamp;
-  std::map<uint8_t, double> m_lastTriggerTimestamp;
-  std::map<uint8_t, double> m_lastFrameCounter;
-};
 
+  // per detector
+  std::map<uint8_t, int64_t>
+      m_lowestCommonTriggerTimestamp_det;
+
+  // per FEC
+  std::map<uint16_t, int64_t> m_deltaTriggerTimestamp;
+  std::map<uint16_t, int64_t> m_oldTriggerTimestamp;
+  std::map<uint16_t, int64_t> m_maxTriggerTimestamp;
+  std::map<uint16_t, int64_t> m_firstTriggerTimestamp;
+  std::map<uint16_t, int64_t> m_lastTriggerTimestamp;
+
+  std::map<uint16_t, uint64_t> m_lastFrameCounter;
+};

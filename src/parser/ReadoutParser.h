@@ -122,9 +122,8 @@ public:
   /// \brief validate a readout buffer
   /// \param[in] Buffer pointer to data
   /// \param[in] Size length of buffer in bytes
-  /// \param[in] Type expected detector type
   /// \return on success return 0, else < 0
-  int validate(const char *Buffer, uint32_t Size, uint8_t Type);
+  int validate(const char *Buffer, uint32_t Size);
 
   // Counters(for Grafana)
   struct ESSHeaderStats Stats;

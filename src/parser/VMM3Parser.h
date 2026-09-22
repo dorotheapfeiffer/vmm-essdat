@@ -63,7 +63,7 @@ public:
   ~VMM3Parser(){};
 
   //
-  int parse(const char *buffer, unsigned int size);
+  int64_t parse(const char *buffer, unsigned int size);
 
   // To be iterated over in processing thread
   std::vector<struct VMM3Data> Result;

@@ -58,8 +58,8 @@ public:
                 double the_seconds_end, std::string the_date_end,
                 uint64_t num_triggers);
   void FillCalibHistos(uint16_t fec, uint8_t vmm, uint8_t ch, float adc,
-                       float adc_corrected, float chip_time,
-                       float chip_time_corrected);
+                       float adc_corrected, int64_t chip_time,
+                       int64_t chip_time_corrected);
 
 private:
   Configuration &m_config;

@@ -36,24 +36,24 @@ public:
 
   ~Clusterer();
 
-  bool SaveHitsR5560(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
+  bool SaveHitsR5560(int64_t readoutTimestamp, uint8_t ringId, uint8_t fenId,
                      uint8_t groupId, uint16_t ampa, uint16_t ampb,
                      uint16_t ampc, uint16_t ampd, uint8_t om, uint32_t counter,
-                     double pulseTime);
+                     int64_t pulseTime, int64_t previousPulseTime);
 
-  bool SaveHitsIBM(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
+  bool SaveHitsIBM(int64_t readoutTimestamp, uint8_t ringId, uint8_t fenId,
                      uint8_t type, uint32_t adc_raw,
-                     double pulseTime);
+                     int64_t pulseTime, int64_t previousPulseTime);
   
-  bool SaveHitsCDT(double readoutTimestamp, uint8_t ringId, uint8_t fenId,
+  bool SaveHitsCDT(int64_t readoutTimestamp, uint8_t ringId, uint8_t fenId,
                      uint8_t OM, uint8_t UID, uint8_t Cathode, uint8_t Anode,
-                     double pulseTime);
+                     int64_t pulseTime, int64_t previousPulseTime);
                                   
   // Analyzing and storing the hits
-  bool AnalyzeHits(double readoutTimestamp, uint8_t fecId, uint8_t vmmId,
-                   uint16_t chNo, uint16_t bcid, uint16_t tdc, uint16_t adc,
-                   bool overThresholdFlag, double chipTime, uint8_t geoId = 0,
-                   double pulseTime = 0, bool newFrame=false);
+  bool AnalyzeHits(int64_t readoutTimestamp, uint8_t fecId, uint8_t vmmId,
+                   uint8_t chNo, uint16_t bcid, uint16_t tdc, uint16_t adc,
+                   bool overThresholdFlag, int64_t chipTime, uint8_t geoId = 0,
+                   int64_t pulseTime = 0, int64_t previousPulseTime=0);
 
   // Analyzing and storing the clusters in plane 0 and 1
   void AnalyzeClustersPlane(std::pair<uint8_t, uint8_t> dp);
@@ -68,12 +68,12 @@ public:
 
   int ClusterByTime(std::pair<uint8_t, uint8_t> dp);
   int ClusterByStrip(std::pair<uint8_t, uint8_t> dp, ClusterContainer &cluster,
-                     double maxDeltaTime);
+                     int64_t maxDeltaTime);
 
-  void AlgorithmUTPC(int idx_min_largest_time, int idx_max_largest_time,
-                     std::vector<double> &vADC, std::vector<double> &vStrips,
-                     std::vector<double> &vTimes, double &positionUTPC,
-                     double &timeUTPC, double &positionAlgo, double &timeAlgo);
+  void AlgorithmUTPC(size_t idx_min_largest_time, size_t idx_max_largest_time,
+                     std::vector<uint16_t> &vADC, std::vector<uint16_t> &vStrips,
+                     std::vector<int64_t> &vTimes, double &positionUTPC,
+                     int64_t &timeUTPC, double &positionAlgo, int64_t &timeAlgo);
 
   int MatchClustersDetector(uint8_t det);
 
@@ -84,19 +84,17 @@ public:
                 uint64_t num_triggers);
 
   void FillCalibHistos(uint16_t fec, uint8_t vmm, uint8_t ch, float adc,
-                       float adc_corrected, float chip_time,
-                       float chip_time_corrected);
+                       float adc_corrected, int64_t chip_time,
+                       int64_t chip_time_corrected);
 
 private:
-  void AddPulseTime(double newTimestamp);
-  double CalculateTof(double theTime, double &thePulseTime, int &whichPulseTime);
   Configuration &m_config;
   Statistics &m_stats;
 
   int m_hitNr = 0;
 
-  double last_time0 = 0;
-  double last_time1 = 0;
+  int64_t last_time0 = 0;
+  int64_t last_time1 = 0;
 
   uint8_t m_oldVmmId = 0;
   uint8_t m_oldFecId = 0;
@@ -109,14 +107,11 @@ private:
 
   int m_cluster_id = 0;
   int m_cluster_detector_id = 0;
-  std::vector<double> m_pulseTime;
-  double m_pulseTime_prev;
-  double m_pulseTime_prev_prev;
+
   RootFile *m_rootFile;
   
-  long posTof = 0;
-  long negTof = 0;
-  long negPrevTof = 0;
-  long negPrevPrevTof = 0;
-  
+  int posTof = 0;
+  int negTof = 0;
+  int negPrevTof = 0;
+ 
 };

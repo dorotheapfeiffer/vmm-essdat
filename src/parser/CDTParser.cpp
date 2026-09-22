@@ -12,7 +12,7 @@
 #include <parser/CDTParser.h>
 
 // Assume we start after the Common PacketHeader
-int CDTParser::parse(const char *Buffer, unsigned int Size) {
+int64_t CDTParser::parse(const char *Buffer, unsigned int Size) {
   corryvreckan::Log::setSection("CDTParser");
   Result.clear();
   uint32_t GoodReadouts{0};

@@ -56,9 +56,10 @@ int ReaderPcap::open() {
   return 0;
 }
 
-int ReaderPcap::validatePacket(pcap_pkthdr *Header, const unsigned char *Data) {
+int ReaderPcap::validatePacket(pcap_pkthdr *Header,
+                               const unsigned char *Data) {
 
-  Stats.PacketsTotal++; /**< total packets in pcap file */
+  Stats.PacketsTotal++;
   Stats.BytesTotal += Header->len;
 
   if (Header->len != Header->caplen) {
@@ -71,23 +72,44 @@ int ReaderPcap::validatePacket(pcap_pkthdr *Header, const unsigned char *Data) {
     return 0;
   }
 
-  Stats.IpProtoUDP++;
-  assert(Stats.PacketsTotal ==
-         Stats.PacketsTruncated + Stats.PacketsNoMatch + Stats.IpProtoUDP);
-  assert(Header->len > ETHERNET_HEADER_SIZE + IP_HEADER_SIZE + UDP_HEADER_SIZE);
+  assert(Header->len >
+         ETHERNET_HEADER_SIZE + IP_HEADER_SIZE + UDP_HEADER_SIZE);
 
-  udphdr *udp = (udphdr *)&Data[UDP_HEADER_OFFSET];
-#ifndef __FAVOR_BSD // Why is __FAVOR_BSD not defined here?
-  uint16_t UdpLen = htons(udp->len);
+  // IPv4 header starts directly after the Ethernet header.
+  // Destination IPv4 address is at bytes 16..19 of the IPv4 header.
+  const unsigned char *ipHeader = &Data[ETHERNET_HEADER_SIZE];
+
+  const uint8_t dstLastOctet = ipHeader[19];
+
+  // Reject short broadcast packets: x.x.x.255 and frame length < 74 bytes
+  if (Header->len < 74 && dstLastOctet == 255) {
+    Stats.PacketsNoMatch++;
+    return 0;
+  }
+
+  Stats.IpProtoUDP++;
+
+  assert(Stats.PacketsTotal ==
+         Stats.PacketsTruncated +
+         Stats.PacketsNoMatch +
+         Stats.IpProtoUDP);
+
+  const udphdr *udp =
+      reinterpret_cast<const udphdr *>(&Data[UDP_HEADER_OFFSET]);
+
+#ifndef __FAVOR_BSD
+  const uint16_t UdpLen = ntohs(udp->len);
 #else
-  uint16_t UdpLen = htons(udp->uh_ulen);
+  const uint16_t UdpLen = ntohs(udp->uh_ulen);
 #endif
+
   assert(UdpLen >= UDP_HEADER_SIZE);
 
   return UdpLen;
 }
 
-int ReaderPcap::read(char *Buffer, size_t BufferSize) {
+
+int ReaderPcap::read(char *Buffer, int BufferSize) {
   if (PcapHandle == nullptr) {
     return -1;
   }
@@ -115,9 +137,9 @@ int ReaderPcap::read(char *Buffer, size_t BufferSize) {
     return UdpDataLength;
   }
 
-  auto DataLength =
-      std::min((size_t)(UdpDataLength - UDP_HEADER_SIZE), BufferSize);
-  std::memcpy(Buffer, &Data[UDP_DATA_OFFSET], DataLength);
+  int DataLength =
+      std::min((UdpDataLength - UDP_HEADER_SIZE), BufferSize);
+  std::memcpy(Buffer, &Data[UDP_DATA_OFFSET], static_cast<size_t>(DataLength));
 
   return DataLength;
 }

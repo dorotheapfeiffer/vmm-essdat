@@ -17,8 +17,7 @@ ReadoutParser::ReadoutParser() {
   std::memset(NextSeqNum, 0, sizeof(NextSeqNum));
 }
 
-int ReadoutParser::validate(const char *Buffer, uint32_t Size,
-                            uint8_t ExpectedType) {
+int ReadoutParser::validate(const char *Buffer, uint32_t Size) {
   std::memset(&Packet, 0, sizeof(Packet));
   corryvreckan::Log::setSection("ReadoutParser");
   if (Buffer == nullptr or Size == 0) {
@@ -54,8 +53,6 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
     return -ReadoutParser::EHEADER;
   }
 
-  uint8_t Type = 0;
-
   // Packet is ESS readout version 0, now we can add more header size checks
   if ((Version & 0xff) == 0x00) {
     Packet.version = 0;
@@ -76,7 +73,7 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
       return -ReadoutParser::ESIZE;
     }
 #endif
-    Type = Packet.HeaderPtr0->CookieAndType >> 24;
+    //Type = Packet.HeaderPtr0->CookieAndType >> 24;
 
     if (Packet.HeaderPtr0->OutputQueue >= MaxOutputQueues && Packet.HeaderPtr0->OutputQueue != 255) {
       LOG(WARNING) << "Output queue " << 
@@ -145,7 +142,7 @@ int ReadoutParser::validate(const char *Buffer, uint32_t Size,
       return -ReadoutParser::ESIZE;
     }
 #endif
-    Type = Packet.HeaderPtr1->CookieAndType >> 24;
+    //Type = Packet.HeaderPtr1->CookieAndType >> 24;
 
     if (Packet.HeaderPtr1->OutputQueue >= MaxOutputQueues && Packet.HeaderPtr1->OutputQueue != 255) {
       LOG(WARNING) << "Output queue " << 

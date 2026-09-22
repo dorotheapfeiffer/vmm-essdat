@@ -226,30 +226,30 @@ void RootFile::SaveDate(double the_seconds_start, std::string the_date_start,
 }
 
 void RootFile::FillCalibHistos(uint16_t fec, uint8_t vmm, uint8_t ch, float adc,
-                               float adc_corrected, float chip_time,
-                               float chip_time_corrected) {
+                               float adc_corrected, int64_t chip_time,
+                               int64_t chip_time_corrected) {
   if (m_config.pDataFormat < 0x40 || m_config.pDataFormat > 0x4C) {
     return;
   }
   if (m_map_calib_TH2D.find(std::make_tuple(fec, vmm, "adc_without_calib")) !=
       m_map_calib_TH2D.end()) {
     int idx = m_map_calib_TH2D[std::make_tuple(fec, vmm, "adc_without_calib")];
-    m_calib_TH2D[idx]->Fill(ch, adc);
+    m_calib_TH2D[static_cast<size_t>(idx)]->Fill(ch, adc);
   }
   if (m_map_calib_TH2D.find(std::make_tuple(fec, vmm, "adc_with_calib")) !=
       m_map_calib_TH2D.end()) {
     int idx = m_map_calib_TH2D[std::make_tuple(fec, vmm, "adc_with_calib")];
-    m_calib_TH2D[idx]->Fill(ch, adc_corrected);
+    m_calib_TH2D[static_cast<size_t>(idx)]->Fill(ch, adc_corrected);
   }
   if (m_map_calib_TH2D.find(std::make_tuple(fec, vmm, "time_without_calib")) !=
       m_map_calib_TH2D.end()) {
     int idx = m_map_calib_TH2D[std::make_tuple(fec, vmm, "time_without_calib")];
-    m_calib_TH2D[idx]->Fill(ch, chip_time);
+    m_calib_TH2D[static_cast<size_t>(idx)]->Fill(ch, chip_time);
   }
   if (m_map_calib_TH2D.find(std::make_tuple(fec, vmm, "time_with_calib")) !=
       m_map_calib_TH2D.end()) {
     int idx = m_map_calib_TH2D[std::make_tuple(fec, vmm, "time_with_calib")];
-    m_calib_TH2D[idx]->Fill(ch, chip_time_corrected);
+    m_calib_TH2D[static_cast<size_t>(idx)]->Fill(ch, chip_time_corrected);
   }
 }
 
@@ -278,10 +278,8 @@ void RootFile::CreateCalibHistos() {
   TH2D *h2;
   std::string name = "";
   int cntCal = 0;
-  for (int i = 0; i < m_config.pVMMs.size(); i++) {
+  for (size_t i = 0; i < m_config.pVMMs.size(); i++) {
     auto tuple = m_config.pVMMs[i];
-    auto det = std::get<0>(tuple);
-    auto plane = std::get<1>(tuple);
     auto fec = std::get<2>(tuple);
     auto vmm = std::get<3>(tuple);
 
@@ -565,7 +563,7 @@ void RootFile::AddHits(HitCDT &&the_hit) {
 
 void RootFile::SaveHits() {
   if (m_hits.size() > 0) {
-    for (int n = 0; n < m_hits.size(); n++) {
+    for (size_t n = 0; n < m_hits.size(); n++) {
       m_hit = m_hits[n];
       m_tree_hits->Fill();
     }
@@ -576,7 +574,7 @@ void RootFile::SaveHits() {
               [](const HitR5560 &t1, const HitR5560 &t2) {
                 return t1.time < t2.time;
               });
-    for (int n = 0; n < m_hits_r5560.size(); n++) {
+    for (size_t n = 0; n < m_hits_r5560.size(); n++) {
       m_hit_r5560 = m_hits_r5560[n];
       m_tree_hits->Fill();
     }
@@ -587,7 +585,7 @@ void RootFile::SaveHits() {
               [](const HitIBM &t1, const HitIBM &t2) {
                 return t1.time < t2.time;
               });
-    for (int n = 0; n < m_hits_ibm.size(); n++) {
+    for (size_t n = 0; n < m_hits_ibm.size(); n++) {
       m_hit_ibm = m_hits_ibm[n];
       m_tree_hits->Fill();
     }
@@ -599,7 +597,7 @@ void RootFile::SaveHits() {
               [](const HitCDT &t1, const HitCDT &t2) {
                 return t1.time < t2.time;
               });
-    for (int n = 0; n < m_hits_cdt.size(); n++) {
+    for (size_t n = 0; n < m_hits_cdt.size(); n++) {
       m_hit_cdt = m_hits_cdt[n];
       m_tree_hits->Fill();
     }
@@ -635,48 +633,48 @@ void RootFile::SaveClustersDetector(ClusterVectorDetector &&clusters_detector) {
       if (m_config.GetDetectorPlane(dp0) == true &&
           m_config.GetDetectorPlane(dp1) == true) {
         int idx = m_map_TH1D[std::make_pair(it.det, "delta_time_planes")];
-        m_TH1D[idx]->Fill(it.time0 - it.time1);
+        m_TH1D[static_cast<size_t>(idx)]->Fill(it.time0 - it.time1);
         idx = m_map_TH1D[std::make_pair(it.det, "delta_time_utpc_planes")];
-        m_TH1D[idx]->Fill(it.time0_utpc - it.time1_utpc);
+        m_TH1D[static_cast<size_t>(idx)]->Fill(it.time0_utpc - it.time1_utpc);
 
         idx = m_map_TH1D[std::make_pair(it.det, "delta_time_charge2_planes")];
-        m_TH1D[idx]->Fill(it.time0_charge2 - it.time1_charge2);
+        m_TH1D[static_cast<size_t>(idx)]->Fill(it.time0_charge2 - it.time1_charge2);
 
         idx = m_map_TH1D[std::make_pair(it.det, "dt0")];
-        m_TH1D[idx]->Fill(it.dt0);
+        m_TH1D[static_cast<size_t>(idx)]->Fill(it.dt0);
 
         idx = m_map_TH1D[std::make_pair(it.det, "dt1")];
-        m_TH1D[idx]->Fill(it.dt1);
+        m_TH1D[static_cast<size_t>(idx)]->Fill(it.dt1);
 
         idx = m_map_TH2D[std::make_pair(it.det, "cluster")];
-        m_TH2D[idx]->Fill(it.pos0, it.pos1);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0, it.pos1);
 
         idx = m_map_TH2D[std::make_pair(it.det, "cluster_utpc")];
-        m_TH2D[idx]->Fill(it.pos0_utpc, it.pos1_utpc);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0_utpc, it.pos1_utpc);
 
         idx = m_map_TH2D[std::make_pair(it.det, "cluster_charge2")];
-        m_TH2D[idx]->Fill(it.pos0_charge2, it.pos1_charge2);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0_charge2, it.pos1_charge2);
 
         idx = m_map_TH2D[std::make_pair(it.det, "cluster_algo")];
-        m_TH2D[idx]->Fill(it.pos0_algo, it.pos1_algo);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0_algo, it.pos1_algo);
 
         idx = m_map_TH2D[std::make_pair(it.det, "size_plane0")];
-        m_TH2D[idx]->Fill(it.pos0, it.pos1, it.size0);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0, it.pos1, it.size0);
 
         idx = m_map_TH2D[std::make_pair(it.det, "size_plane1")];
-        m_TH2D[idx]->Fill(it.pos0, it.pos1, it.size1);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0, it.pos1, it.size1);
 
         idx = m_map_TH2D[std::make_pair(it.det, "size_plane01")];
-        m_TH2D[idx]->Fill(it.pos0, it.pos1, it.size0 + it.size1);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0, it.pos1, it.size0 + it.size1);
 
         idx = m_map_TH2D[std::make_pair(it.det, "charge_plane0")];
-        m_TH2D[idx]->Fill(it.pos0, it.pos1, it.adc0);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0, it.pos1, it.adc0);
 
         idx = m_map_TH2D[std::make_pair(it.det, "charge_plane1")];
-        m_TH2D[idx]->Fill(it.pos0, it.pos1, it.adc1);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0, it.pos1, it.adc1);
 
         idx = m_map_TH2D[std::make_pair(it.det, "charge_plane01")];
-        m_TH2D[idx]->Fill(it.pos0, it.pos1, it.adc0 + it.adc1);
+        m_TH2D[static_cast<size_t>(idx)]->Fill(it.pos0, it.pos1, it.adc0 + it.adc1);
       }
 
       m_cluster_detector = it;
@@ -687,7 +685,7 @@ void RootFile::SaveClustersDetector(ClusterVectorDetector &&clusters_detector) {
 }
 
 void RootFile::SaveHistograms() {
-  if (m_config.pDataFormat >= 0x10 && m_config.pDataFormat <= 0x3C || m_config.pDataFormat == 0x60) {
+  if ((m_config.pDataFormat >= 0x10) && ((m_config.pDataFormat <= 0x3C) || (m_config.pDataFormat == 0x60))) {
     return;
   }
   for (auto const &h1 : m_TH1D) {
@@ -704,7 +702,7 @@ void RootFile::SaveHistograms() {
         TString jsonFilename = m_fileName;
         jsonFilename.ReplaceAll(".root", "");
 
-        TString json = TBufferJSON::ToJSON(m_TH2D[id], 3);
+        TString json = TBufferJSON::ToJSON(m_TH2D[static_cast<size_t>(id)], 3);
         std::ofstream f1;
         f1.open(jsonFilename + "_detector" + std::to_string(det.first) +
                     "_cluster.json",
@@ -713,7 +711,7 @@ void RootFile::SaveHistograms() {
         f1.close();
 
         id = m_map_TH2D[std::make_pair(det.first, "cluster_utpc")];
-        json = TBufferJSON::ToJSON(m_TH2D[id], 3);
+        json = TBufferJSON::ToJSON(m_TH2D[static_cast<size_t>(id)], 3);
         std::ofstream f2;
         f2.open(jsonFilename + "_detector" + std::to_string(det.first) +
                     "_cluster_utpc.json",
@@ -722,7 +720,7 @@ void RootFile::SaveHistograms() {
         f2.close();
 
         id = m_map_TH2D[std::make_pair(det.first, "cluster_charge2")];
-        json = TBufferJSON::ToJSON(m_TH2D[id], 3);
+        json = TBufferJSON::ToJSON(m_TH2D[static_cast<size_t>(id)], 3);
         std::ofstream f3;
         f3.open(jsonFilename + "_detector" + std::to_string(det.first) +
                     "_cluster_charge2.json",
@@ -731,7 +729,7 @@ void RootFile::SaveHistograms() {
         f3.close();
 
         id = m_map_TH2D[std::make_pair(det.first, "cluster_algo")];
-        json = TBufferJSON::ToJSON(m_TH2D[id], 3);
+        json = TBufferJSON::ToJSON(m_TH2D[static_cast<size_t>(id)], 3);
         std::ofstream f4;
         f4.open(jsonFilename + "_detector" + std::to_string(det.first) +
                     "_cluster_algo.json",
@@ -743,49 +741,49 @@ void RootFile::SaveHistograms() {
       for (int b0 = 1; b0 <= m_bins0; b0++) {
         for (int b1 = 1; b1 <= m_bins1; b1++) {
           int idx = m_map_TH2D[std::make_pair(det.first, "cluster")];
-          int cnt = m_TH2D[idx]->GetBinContent(b0, b1);
+          int cnt = static_cast<int>(m_TH2D[static_cast<size_t>(idx)]->GetBinContent(b0, b1));
           double val = 0;
           if (cnt > 0) {
             n++;
             idx = m_map_TH2D[std::make_pair(det.first, "size_plane0")];
-            val = m_TH2D[idx]->GetBinContent(b0, b1) / cnt;
-            m_TH2D[idx]->SetBinContent(b0, b1, val);
+            val = m_TH2D[static_cast<size_t>(idx)]->GetBinContent(b0, b1) / cnt;
+            m_TH2D[static_cast<size_t>(idx)]->SetBinContent(b0, b1, val);
 
             idx = m_map_TH2D[std::make_pair(det.first, "size_plane1")];
-            val = m_TH2D[idx]->GetBinContent(b0, b1) / cnt;
-            m_TH2D[idx]->SetBinContent(b0, b1, val);
+            val = m_TH2D[static_cast<size_t>(idx)]->GetBinContent(b0, b1) / cnt;
+            m_TH2D[static_cast<size_t>(idx)]->SetBinContent(b0, b1, val);
 
             idx = m_map_TH2D[std::make_pair(det.first, "size_plane01")];
-            val = m_TH2D[idx]->GetBinContent(b0, b1) / cnt;
-            m_TH2D[idx]->SetBinContent(b0, b1, val);
+            val = m_TH2D[static_cast<size_t>(idx)]->GetBinContent(b0, b1) / cnt;
+            m_TH2D[static_cast<size_t>(idx)]->SetBinContent(b0, b1, val);
 
             idx = m_map_TH2D[std::make_pair(det.first, "charge_plane0")];
-            val = m_TH2D[idx]->GetBinContent(b0, b1) / cnt;
-            m_TH2D[idx]->SetBinContent(b0, b1, val);
+            val = m_TH2D[static_cast<size_t>(idx)]->GetBinContent(b0, b1) / cnt;
+            m_TH2D[static_cast<size_t>(idx)]->SetBinContent(b0, b1, val);
 
             idx = m_map_TH2D[std::make_pair(det.first, "charge_plane1")];
-            val = m_TH2D[idx]->GetBinContent(b0, b1) / cnt;
-            m_TH2D[idx]->SetBinContent(b0, b1, val);
+            val = m_TH2D[static_cast<size_t>(idx)]->GetBinContent(b0, b1) / cnt;
+            m_TH2D[static_cast<size_t>(idx)]->SetBinContent(b0, b1, val);
 
             idx = m_map_TH2D[std::make_pair(det.first, "charge_plane01")];
-            val = m_TH2D[idx]->GetBinContent(b0, b1) / cnt;
-            m_TH2D[idx]->SetBinContent(b0, b1, val);
+            val = m_TH2D[static_cast<size_t>(idx)]->GetBinContent(b0, b1) / cnt;
+            m_TH2D[static_cast<size_t>(idx)]->SetBinContent(b0, b1, val);
           }
         }
       }
 
       int idx = m_map_TH2D[std::make_pair(det.first, "size_plane0")];
-      m_TH2D[idx]->SetEntries(n);
+      m_TH2D[static_cast<size_t>(idx)]->SetEntries(n);
       idx = m_map_TH2D[std::make_pair(det.first, "size_plane1")];
-      m_TH2D[idx]->SetEntries(n);
+      m_TH2D[static_cast<size_t>(idx)]->SetEntries(n);
       idx = m_map_TH2D[std::make_pair(det.first, "size_plane01")];
-      m_TH2D[idx]->SetEntries(n);
+      m_TH2D[static_cast<size_t>(idx)]->SetEntries(n);
       idx = m_map_TH2D[std::make_pair(det.first, "charge_plane0")];
-      m_TH2D[idx]->SetEntries(n);
+      m_TH2D[static_cast<size_t>(idx)]->SetEntries(n);
       idx = m_map_TH2D[std::make_pair(det.first, "charge_plane1")];
-      m_TH2D[idx]->SetEntries(n);
+      m_TH2D[static_cast<size_t>(idx)]->SetEntries(n);
       idx = m_map_TH2D[std::make_pair(det.first, "charge_plane01")];
-      m_TH2D[idx]->SetEntries(n);
+      m_TH2D[static_cast<size_t>(idx)]->SetEntries(n);
     }
   }
 }

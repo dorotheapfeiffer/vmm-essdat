@@ -13,7 +13,7 @@
 
 
 // Assume we start after the Common PacketHeader
-int VMM3Parser::parse(const char *Buffer, unsigned int Size) {
+int64_t VMM3Parser::parse(const char *Buffer, unsigned int Size) {
   Result.clear();
   uint32_t GoodReadouts{0};
 

@@ -12,7 +12,7 @@
 #include <parser/IBMParser.h>
 
 // Assume we start after the Common PacketHeader
-int IBMParser::parse(const char *Buffer, unsigned int Size) {
+int64_t IBMParser::parse(const char *Buffer, unsigned int Size) {
   corryvreckan::Log::setSection("IBMParser");
   Result.clear();
   uint32_t GoodReadouts{0};

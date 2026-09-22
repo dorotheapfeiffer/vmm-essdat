@@ -10,7 +10,7 @@ for root, dirs, files in os.walk(base_dir):
 	print(root)
 	print(dirs)
 	for file in files:
-		if file.startswith("STF") and file.endswith('.pcapng'):
+		if file.startswith("STF3") and file.endswith('.pcapng'):
 			full_path = os.path.join(root, file)
 			print(f"Processing: {full_path}")
 			
@@ -25,7 +25,7 @@ for root, dirs, files in os.walk(base_dir):
 					'-cs', '1',
 					'-ccs', '1',
 					'-dt', '100',
-					'-mst', '1',
+					'-mst', '0',
 					'-spc', '500',
 					'-dp', '200',
 					'-coin', 'center-of-masss',

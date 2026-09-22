@@ -144,7 +144,7 @@ bool Configuration::PrintUsage(const std::string &errorMessage, char *argv) {
 
   std::cout << "-crl:   Valid clusters normally have the same amount of charge "
                "in both detector planes (ratio of charge plane 0/charge plane "
-               "1 is 100\% or 1, one value per detector.\n"
+               "1 is 100% or 1, one value per detector.\n"
             << "        Depending on the readout, the charge sharing can be "
                "different, e.g. in a standard GEM strip readout the total "
                "charge is divided 60/40 between plane 0/ plane 1\n"
@@ -224,7 +224,7 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
   if (argc == 1 || argc % 2 == 0) {
     return PrintUsage("Wrong number of arguments!", argv[argc - 1]);
   }
-  for (int i = 1; i < argc; i += 2) {
+  for (size_t i = 1; i < static_cast<size_t>(argc); i += 2) {
     if (strncmp(argv[i], "-f", 2) == 0) {
       fFound = true;
       pFileName = argv[i + 1];
@@ -250,23 +250,8 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     } else if (strncmp(argv[i], "-info", 5) == 0) {
       pInfo = argv[i + 1];
     } else if (strncmp(argv[i], "-t0", 3) == 0) {
-      pTime0Correction = atof(argv[i + 1]);
-    } else if (strncmp(argv[i], "-bc", 3) == 0) {
-      pBC = atof(argv[i + 1]);
-      // ESS VMM firmware has 44.444444 MHz clock
-      if (pBC >= 44.4 && pBC <= 44.5) {
-        pBCTime_ns = 22.5;
-        pOffsetPeriod = 4096.0 * pBCTime_ns;
-      }
-      // 88.0525 MHz ESS clock, half of that is BC clock
-      else if (pBC >= 44.0 && pBC <= 44.1) {
-        pBCTime_ns = 22.713721927259;
-        pOffsetPeriod = 4096.0 * pBCTime_ns;
-      } else {
-        pBCTime_ns = (1000.0 / pBC);
-        pOffsetPeriod = 4096.0 * 25.0;
-      }
-    }
+      pTime0Correction = static_cast<int64_t>(atol(argv[i + 1]));
+    } 
     else if (strncmp(argv[i], "-geo", 4) == 0) {
       pGeometryFile = argv[i + 1];
       if (pGeometryFile.find(".json") == std::string::npos) {
@@ -302,10 +287,10 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     } else if (strncmp(argv[i], "-save", 5) == 0) {
       std::string parameterString = argv[i + 1];
       char removeChars[] = " ";
-      for (unsigned int i = 0; i < strlen(removeChars); ++i) {
+      for (size_t n = 0; n < strlen(removeChars); ++n) {
         parameterString.erase(std::remove(parameterString.begin(),
                                           parameterString.end(),
-                                          removeChars[i]),
+                                          removeChars[n]),
                               parameterString.end());
       }
 
@@ -349,32 +334,32 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
 
       for (auto &s : vTokens) {
         std::vector<std::string> v;
-        std::string token;
-        for (unsigned int i = 0; i < strlen(removeChars); ++i) {
-          s.erase(std::remove(s.begin(), s.end(), removeChars[i]), s.end());
+        std::string token2;
+        for (size_t z = 0; z < strlen(removeChars); ++z) {
+          s.erase(std::remove(s.begin(), s.end(), removeChars[z]), s.end());
         }
-        std::istringstream tokenStream(s);
-        while (std::getline(tokenStream, token, ',')) {
-          if (token != " ") {
-            if (token.find_first_not_of("0123456789") != std::string::npos) {
+        std::istringstream tokenStream2(s);
+        while (std::getline(tokenStream2, token2, ',')) {
+          if (token2 != " ") {
+            if (token2.find_first_not_of("0123456789") != std::string::npos) {
               return PrintUsage(
                   "The -save parameter accepts only a list of lists of "
                   "detectors (numbers) in the format [[],[1,2],[1,2,3]]!",
                   nullptr);
             }
           }
-          if (n == 0 && token != " ") {
-            pSaveHits.push_back(std::stoi(token));
-          } else if (n == 1 && token != " ") {
-            pSaveClustersPlane.push_back(std::stoi(token));
-          } else if (n == 2 && token != " ") {
-            pSaveClustersDetector.push_back(std::stoi(token));
+          if (n == 0 && token2 != " ") {
+            pSaveHits.push_back(static_cast<uint8_t>(std::stoi(token2)));
+          } else if (n == 1 && token2 != " ") {
+            pSaveClustersPlane.push_back(static_cast<uint8_t>(std::stoi(token2)));
+          } else if (n == 2 && token2 != " ") {
+            pSaveClustersDetector.push_back(static_cast<uint8_t>(std::stoi(token2)));
           }
         }
         n++;
       }
     } else if (strncmp(argv[i], "-n", 2) == 0) {
-      nHits = atoi(argv[i + 1]);
+      nHits = static_cast<uint64_t>(atoi(argv[i + 1]));
     } else if (strncmp(argv[i], "-cal", 4) == 0) {
       pCalFilename = argv[i + 1];
       useCalibration = true;
@@ -446,8 +431,6 @@ bool Configuration::ParseCommandLine(int argc, char **argv) {
     pRootFilename.replace(pRootFilename.size() - 7, pRootFilename.size(), "");
   }
 
-  time_t ttime = time(0);
-  tm *local_time = localtime(&ttime);
   auto t = std::time(nullptr);
   auto tm = *std::localtime(&t);
   std::stringstream sTime;
@@ -476,11 +459,11 @@ bool Configuration::GetDetectorPlane(std::pair<uint8_t, uint8_t> dp) {
 }
 
 bool Configuration::CreateMapping() {
-  if (pDataFormat >= 0x10 && pDataFormat <= 0x3C || pDataFormat == 0x60) {
+  if ((pDataFormat >= 0x10) && ((pDataFormat <= 0x3C) || (pDataFormat == 0x60))) {
     pFecs.clear();
     for (int ring = 0; ring < NUM_RINGS; ring++) {
       for (int fec = 0; fec < FENS_PER_RING; fec++) {
-        pFecs.push_back(ring * FENS_PER_RING + fec);
+        pFecs.push_back(static_cast<uint16_t>(ring * FENS_PER_RING + fec));
       }
     }
     // Dummy fec number for parser errors
@@ -554,7 +537,7 @@ bool Configuration::CreateMapping() {
                       std::make_tuple(detector, plane, fec, vmm));
         if (searchTuple == pVMMs.end()) {
           pVMMs.emplace_back(std::make_tuple(detector, plane, fec, vmm));
-          auto searchTuple = pChannels.find(std::make_pair(detector, plane));
+          auto searchTuple2 = pChannels.find(std::make_pair(detector, plane));
           int strips = 0;
           for (size_t ch = 0; ch < strips0.size(); ch++) {
             int s0 = strips0[ch].get<int>();
@@ -562,7 +545,7 @@ bool Configuration::CreateMapping() {
               strips++;
             }
           }
-          if (searchTuple == pChannels.end()) {
+          if (searchTuple2 == pChannels.end()) {
             pChannels[std::make_tuple(detector, plane)] = strips;
           } else {
             pChannels[std::make_tuple(detector, plane)] += strips;
@@ -600,8 +583,8 @@ bool Configuration::CreateMapping() {
       auto searchFecChip =
           pFecChip_DetectorPlane.find(std::make_pair(fec, vmm));
       if (searchFecChip == pFecChip_DetectorPlane.end()) {
-        pDetectors[fec][vmm] = (int)detector;
-        pPlanes[fec][vmm] = (int)plane;
+        pDetectors[fec][vmm] = static_cast<uint8_t>(detector);
+        pPlanes[fec][vmm] = static_cast<uint8_t>(plane);
         
         for (size_t ch = 0; ch < strips0.size(); ch++) {
           int s0 = strips0[ch].get<int>();
@@ -689,9 +672,9 @@ void Configuration::GetDetectorParameters(std::string input,
 bool Configuration::CheckDetectorParameters(std::string name,
                                             std::vector<double> &v) {
   if (v.size() == 1) {
-    float val = v[0];
-    for (int n = 1; n < pDets.size(); n++) {
-      v.push_back(val);
+    double val = v[0];
+    for (size_t n = 1; n < pDets.size(); n++) {
+      v.push_back(static_cast<double>(val));
     }
   } else {
     if (v.size() != pDets.size()) {

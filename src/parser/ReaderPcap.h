@@ -31,7 +31,7 @@ public:
   /// \param buffer user allocated buffer, must be at least bufferlen bytes
   /// \param bufferlen length in bytes
   /// \return -1 no more data, 0 non UDP, >0 size of UDP payload
-  int read(char *Buffer, size_t BufferSize);
+  int read(char *Buffer, int BufferSize);
 
   /// \brief update stats counters, use printStats next
   /// \return 0 on OK, -1 on error (failed open())
